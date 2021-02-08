@@ -4,10 +4,10 @@
   * @author  Valentina Denic
   * @brief   GSM module driver.
   *          This file provides firmware functions to manage the following
-  *          functionalities of the console.
+  *          functionalities of the gsm module.
   *           + Initialization function
-  *           + Read message from gsm modul function
-  *           + Write message to gsm modul function
+  *           + Read message from gsm module function
+  *           + Write message to gsm module function
   *           + Bring receiving buffer for characters from gsm to initial state
   *           + Collect characters in uart interrupt routine
   *           + Receive message from gsm in receiving task
@@ -205,7 +205,7 @@ DRIVERState_t DRIVER_GSM_Read(DRIVERGsmHandler_t *handler, uint8_t* userBuffer, 
   * @param msg       	Message to send to GSM .
   * @retval DRIVERState_t status
   */
-DRIVERState_t DRIVER_GSM_Write(DRIVERGsmHandler_t *handler, const uint8_t* msg, uint8_t msgSize)
+DRIVERState_t DRIVER_GSM_Write(DRIVERGsmHandler_t *handler, const uint8_t* msg, uint32_t msgSize)
 {
 	DRIVERGsmMsg_t queueMsg;
 

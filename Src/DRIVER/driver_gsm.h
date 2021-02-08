@@ -82,7 +82,7 @@ DRIVERState_t DRIVER_GSM_Init(DRIVERGsmHandler_t *handler, DRIVERGsmConfig_t *co
 
 /* IO operation functions ***********************************************************************************/
 DRIVERState_t DRIVER_GSM_Read(DRIVERGsmHandler_t *handler, uint8_t* userBuffer, uint32_t* size);
-DRIVERState_t DRIVER_GSM_Write(DRIVERGsmHandler_t *handler, const uint8_t* msg, uint8_t msgSize);
+DRIVERState_t DRIVER_GSM_Write(DRIVERGsmHandler_t *handler, const uint8_t* msg, uint32_t msgSize);
 DRIVERState_t DRIVER_GSM_Flush(DRIVERGsmHandler_t *handler);
 
 #endif /* DRIVER_GSM_GSM_H_ */

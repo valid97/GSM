@@ -16,7 +16,7 @@
 
     (#) Declare a gsmHandler_t handle structure (eg. gsmHandler_t gsmHandler).
 	(#) Initialize the gsm low level resources by implementing the GSM_Init() function
-    (#) Set echo mode in gsm modul
+    (#) Set echo mode in gsm module
     (#) Set message format (pdu or text(default mode))
     (#) Set message storage for all type of messages(reading,deleting,sending,writing,receiving)
     (#) Test which storage we have (currently available is SIM storage)
@@ -29,9 +29,9 @@
 	(#) Close socket in defined gsmHandler when you close opened socket
 	(#) Check how many are opened sockets currently
 
-	(#) Registers gsm modul to mobile network station in Serbia region
-	(#) Deregisters gsm modul from mobile network
-	(#) Check if it is gsm modul registered on the network
+	(#) Registers gsm module to mobile network station in Serbia region
+	(#) Deregisters gsm module from mobile network
+	(#) Check if it is gsm module registered on the network
 	(#) Set Access Point Name (APN) for current region (Serbia)
 	(#) Check setted Access Point Name
 	(#) Set wireless connection to GPRS service
@@ -176,7 +176,7 @@ DRIVERState_t GSM_Init(gsmHandler_t *handler, gsmConfig_t *config)
 
 /**
   * @brief Set echo using AT command.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -194,7 +194,7 @@ DRIVERState_t GSM_SetEcho(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -279,7 +279,7 @@ DRIVERState_t GSM_SetEcho(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 /**
   * @brief Set message format, for sending and receiving message, using AT command.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -294,7 +294,7 @@ DRIVERState_t GSM_MsgFormat(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -380,7 +380,7 @@ DRIVERState_t GSM_MsgFormat(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 /**
   * @brief Set message storage using AT command.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -422,7 +422,7 @@ DRIVERState_t GSM_SetMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -647,7 +647,7 @@ DRIVERState_t GSM_SetMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 /**
   * @brief Test message storage using AT command.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -674,7 +674,7 @@ DRIVERState_t GSM_TestMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -718,7 +718,7 @@ DRIVERState_t GSM_TestMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 /**
   * @brief List messages using at command.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -738,7 +738,7 @@ DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -897,7 +897,7 @@ DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 /**
   * @brief Read message using at command.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -912,7 +912,7 @@ DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -1021,7 +1021,7 @@ DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 /**
   * @brief Delete messages using at command.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -1036,7 +1036,7 @@ DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -1230,7 +1230,7 @@ DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 /**
   * @brief Send message using at command.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -1245,7 +1245,7 @@ DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -1657,7 +1657,7 @@ DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 // IPADDRESS AND TYPE HAVE TO FINISH WITH '\0' CHARACTER!!
 /**
   * @brief Open socket and set his state with parameters defined in socket variable.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param socket       Socket handle.
   * @retval SocketStatus_t status
   */
@@ -1701,7 +1701,7 @@ SocketStatus_t GSM_SetSocket(gsmHandler_t *gsmHandler, Socket_t *socket)
 
 /**
   * @brief Close socket and set his state to default.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param socket       Socket handle.
   * @retval SocketStatus_t status
   */
@@ -1726,7 +1726,7 @@ SocketStatus_t GSM_CloseSocket(gsmHandler_t *gsmHandler, Socket_t *socket)
 
 /**
   * @brief Check how many are open sockets.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval SocketStatus_t status
   */
 SocketStatus_t GSM_CheckOpenSocketNo(gsmHandler_t *gsmHandler)
@@ -1738,7 +1738,7 @@ SocketStatus_t GSM_CheckOpenSocketNo(gsmHandler_t *gsmHandler)
 
 /**
   * @brief Turn on network connection.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_NetworkRegistered(gsmHandler_t *gsmHandler)
@@ -1752,7 +1752,7 @@ DRIVERState_t GSM_NetworkRegistered(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -1781,7 +1781,7 @@ DRIVERState_t GSM_NetworkRegistered(gsmHandler_t *gsmHandler)
 
 /**
   * @brief Turn off network connection.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_NetworkDeregistered(gsmHandler_t *gsmHandler)
@@ -1795,7 +1795,7 @@ DRIVERState_t GSM_NetworkDeregistered(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -1824,7 +1824,7 @@ DRIVERState_t GSM_NetworkDeregistered(gsmHandler_t *gsmHandler)
 
 /**
   * @brief Check network connection.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_CheckNetworkRegistered(gsmHandler_t *gsmHandler)
@@ -1838,7 +1838,7 @@ DRIVERState_t GSM_CheckNetworkRegistered(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -1875,7 +1875,7 @@ DRIVERState_t GSM_CheckNetworkRegistered(gsmHandler_t *gsmHandler)
 
 /**
   * @brief Set APN for current region.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_SetAPN(gsmHandler_t *gsmHandler)
@@ -1889,7 +1889,7 @@ DRIVERState_t GSM_SetAPN(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -1918,7 +1918,7 @@ DRIVERState_t GSM_SetAPN(gsmHandler_t *gsmHandler)
 
 /**
   * @brief Check registed APN.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_CheckAPN(gsmHandler_t *gsmHandler)
@@ -1932,7 +1932,7 @@ DRIVERState_t GSM_CheckAPN(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -1962,7 +1962,7 @@ DRIVERState_t GSM_CheckAPN(gsmHandler_t *gsmHandler)
 
 /**
   * @brief Set wireless connection with GPRS. Before this function, function for setting APN should be called.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_SetWirelessConnectionGPRS(gsmHandler_t *gsmHandler)
@@ -1976,7 +1976,7 @@ DRIVERState_t GSM_SetWirelessConnectionGPRS(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -2006,7 +2006,7 @@ DRIVERState_t GSM_SetWirelessConnectionGPRS(gsmHandler_t *gsmHandler)
 
 /**
   * @brief Get local IP adress from provider server.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_GetLocalIPAddress(gsmHandler_t *gsmHandler)
@@ -2020,7 +2020,7 @@ DRIVERState_t GSM_GetLocalIPAddress(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -2072,7 +2072,7 @@ DRIVERState_t GSM_GetLocalIPAddress(gsmHandler_t *gsmHandler)
 }
 /**
   * @brief Attach to Packet Domain service.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_AttachToGPRSService(gsmHandler_t *gsmHandler)
@@ -2086,7 +2086,7 @@ DRIVERState_t GSM_AttachToGPRSService(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -2115,7 +2115,7 @@ DRIVERState_t GSM_AttachToGPRSService(gsmHandler_t *gsmHandler)
 
 /**
   * @brief Detach from Packet Domain service.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_DetachFromGPRSService(gsmHandler_t *gsmHandler)
@@ -2129,7 +2129,7 @@ DRIVERState_t GSM_DetachFromGPRSService(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -2157,8 +2157,8 @@ DRIVERState_t GSM_DetachFromGPRSService(gsmHandler_t *gsmHandler)
 }
 
 /**
-  * @brief Set Packet Data Protocol context for gsm modul.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @brief Set Packet Data Protocol context for gsm module.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -2180,7 +2180,7 @@ DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -2242,7 +2242,7 @@ DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 		}
 	}
 
-	/* Make pointer for storing message to send to gsm modul */
+	/* Make pointer for storing message to send to gsm module */
 	uint8_t msgToSend[200] = {0};
 	uint32_t msgSize = 0;
 
@@ -2315,7 +2315,7 @@ DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 
 	/* Set Packet Data Protocol type and
-	 * set size of message for sending command to gsm modul */
+	 * set size of message for sending command to gsm module */
 	uint8_t PDPType[10];
 	memset((char*)PDPType,0,sizeof(PDPType));
 	if( *buffer == '1') {strcpy((char*)PDPType,(const char*)"\"IP\","); msgSize += 5;}
@@ -2354,10 +2354,10 @@ DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	uint32_t i = 0;
 	while(buffer[i] != '\r'){ APNType[i] = buffer[i]; i++; }
 
-	/* Set size of message for sending command to gsm modul */
+	/* Set size of message for sending command to gsm module */
 	msgSize += size + 2;
 
-	/* Set buffer for sending command to gsm modul to contains message  */
+	/* Set buffer for sending command to gsm module to contains message  */
 	memset(msgToSend,0, msgSize);
 	strcat((char*)msgToSend,(const char*)PDPContextID);
 	strcat((char*)msgToSend,(const char*)PDPType);
@@ -2392,8 +2392,8 @@ DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 }
 
 /**
-  * @brief Check setted Packet Data Protocol context for gsm modul.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @brief Check setted Packet Data Protocol context for gsm module.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_CheckSettedPDPContext(gsmHandler_t *gsmHandler)
@@ -2403,6 +2403,14 @@ DRIVERState_t GSM_CheckSettedPDPContext(gsmHandler_t *gsmHandler)
 	/* Reset buffer and his size */
 	memset(buffer,0,sizeof(buffer));
 	uint32_t size = 0;
+
+	/* Checking if user send correct gsm and console */
+	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
+	{
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
+		return DRIVER_ERROR;
+	}
+	DRIVER_GSM_Flush(gsmHandler->gsm);
 
 	/* Send command to dissconnect from server */
 	DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cgdcont?\r", sizeof("at+cgdcont?\r"));
@@ -2439,8 +2447,8 @@ DRIVERState_t GSM_CheckSettedPDPContext(gsmHandler_t *gsmHandler)
 }
 
 /**
-  * @brief Check active Packet Data Protocol context for gsm modul.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @brief Check active Packet Data Protocol context for gsm module.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_CheckActivePDPContext(gsmHandler_t *gsmHandler)
@@ -2450,6 +2458,14 @@ DRIVERState_t GSM_CheckActivePDPContext(gsmHandler_t *gsmHandler)
 	/* Reset buffer and his size */
 	memset(buffer,0,sizeof(buffer));
 	uint32_t size = 0;
+
+	/* Checking if user send correct gsm and console */
+	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
+	{
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
+		return DRIVER_ERROR;
+	}
+	DRIVER_GSM_Flush(gsmHandler->gsm);
 
 	/* Send command to check activation type of defined PDP contexts */
 	DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cgact?\r", sizeof("at+cgact?\r"));
@@ -2486,8 +2502,8 @@ DRIVERState_t GSM_CheckActivePDPContext(gsmHandler_t *gsmHandler)
 }
 
 /**
-  * @brief Check active Packet Data Protocol context for gsm modul.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @brief Check active Packet Data Protocol context for gsm module.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_ShowPDPIP(gsmHandler_t *gsmHandler)
@@ -2497,6 +2513,14 @@ DRIVERState_t GSM_ShowPDPIP(gsmHandler_t *gsmHandler)
 	/* Reset buffer and his size */
 	memset(buffer,0,sizeof(buffer));
 	uint32_t size = 0;
+
+	/* Checking if user send correct gsm and console */
+	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
+	{
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
+		return DRIVER_ERROR;
+	}
+	DRIVER_GSM_Flush(gsmHandler->gsm);
 
 	/* Send command to check activation type of defined PDP contexts */
 	DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cgpaddr\r", sizeof("at+cgpaddr\r"));
@@ -2533,8 +2557,8 @@ DRIVERState_t GSM_ShowPDPIP(gsmHandler_t *gsmHandler)
 }
 
 /**
-  * @brief Active Packet Data Protocol context for gsm modul.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @brief Active Packet Data Protocol context for gsm module.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -2557,7 +2581,7 @@ DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -2618,7 +2642,7 @@ DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 		}
 	}
 
-	/* Make pointer for storing message to send to gsm modul */
+	/* Make pointer for storing message to send to gsm module */
 	uint32_t msgSize = 0;
 
 	/* Set command for activating PDP context */
@@ -2678,7 +2702,7 @@ DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 /**
   * @brief Deactive Packet Data Protocol context for GPRS connection.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_DeactiveGPRSPDPContext(gsmHandler_t *gsmHandler)
@@ -2692,7 +2716,7 @@ DRIVERState_t GSM_DeactiveGPRSPDPContext(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -2719,8 +2743,8 @@ DRIVERState_t GSM_DeactiveGPRSPDPContext(gsmHandler_t *gsmHandler)
 }
 
 /**
-  * @brief Deactive Packet Data Protocol context for gsm modul.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @brief Deactive Packet Data Protocol context for gsm module.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
@@ -2735,7 +2759,7 @@ DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -2796,7 +2820,7 @@ DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 		}
 	}
 
-	/* Make pointer for storing message to send to gsm modul */
+	/* Make pointer for storing message to send to gsm module */
 	uint32_t msgSize = 0;
 
 	/* Set command for activating PDP context */
@@ -2855,7 +2879,7 @@ DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 /**
   * @brief Set auto sending timer - the seconds after which the data will be sent to server
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -2866,6 +2890,14 @@ DRIVERState_t GSM_SetAutoSendingTimerIP(gsmHandler_t *gsmHandler, uint32_t timeo
 	/* Reset buffer and his size */
 	memset(buffer,0,sizeof(buffer));
 	uint32_t size = 0;
+
+	/* Checking if user send correct gsm and console */
+	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
+	{
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
+		return DRIVER_ERROR;
+	}
+	DRIVER_GSM_Flush(gsmHandler->gsm);
 
 	/* Request to user */
 	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter option: \r\n 1 Not set timer \r\n 2 Set timer \r\n ");
@@ -3020,9 +3052,117 @@ DRIVERState_t GSM_SetAutoSendingTimerIP(gsmHandler_t *gsmHandler, uint32_t timeo
 	return DRIVER_OK;
 }
 
+
 /**
-  * @brief Connect gsm modul to specified server.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @brief Set format of sending packets in TCPIP protocol (hexadecimal or decimal format).
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
+  * @param timeout      Timeout period for console.
+  * @retval DRIVERState_t status
+  */
+DRIVERState_t GSM_SetSendingIPFormat(gsmHandler_t *gsmHandler, uint32_t timeout)
+{
+	/* Buffer for putting answer from gsm */
+	uint8_t buffer[100] = {0};
+
+	/* How many characters are received from gsm-it's importent to be zero initialize */
+	uint32_t size = 0;
+
+	/* Checking if user send correct gsm and console */
+	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
+	{
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError: incorrect console and gsm module!\r\n");
+		return DRIVER_ERROR;
+	}
+	DRIVER_GSM_Flush(gsmHandler->gsm);
+
+	/* Ask user witch mode of echo he wants */
+	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"Do you want to set hexadecimal way of sending data to server? \r\n");
+	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"Enter number:\r\n 1 Yes(hexadecimal format)\r\n 2 No(decimal format) \r\n ");
+	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
+
+
+	/* Response from user */
+	uint8_t incorrectInput = 1;
+	while(incorrectInput != 3)
+	{
+		/* function that request from user only number for answer */
+		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
+		case DRIVER_TIMEOUT:
+			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
+			DRIVER_GSM_Flush(gsmHandler->gsm);
+			return DRIVER_TIMEOUT;
+		case DRIVER_ERROR:
+			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
+			DRIVER_GSM_Flush(gsmHandler->gsm);
+			return DRIVER_ERROR;
+		case DRIVER_OK:
+			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
+			{
+				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
+				DRIVER_GSM_Flush(gsmHandler->gsm);
+				return DRIVER_OK;
+			}
+			break;
+		}
+
+		if(*buffer == '1' || *buffer == '2') break;
+		else
+		{
+
+			if(incorrectInput == 3)
+			{
+				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
+				DRIVER_GSM_Flush(gsmHandler->gsm);
+				return DRIVER_ERROR;
+			}
+			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
+			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
+			memset(buffer,0,sizeof(buffer));
+			size = 0;
+			incorrectInput++;
+		}
+	}
+
+	/* Set command for type of sending format */
+	uint8_t msgToSend[20] = {0};
+	uint8_t msgSize = 14;
+	strcat((char*)msgToSend, "at+cipsendhex=");
+
+	if(*buffer == '1') strcat((char*)msgToSend,"1\r");
+	else if(*buffer == '2') strcat((char*)msgToSend,"0\r");
+	msgSize += 2;
+
+
+	/* Reset buffer and his size */
+	memset(buffer,0,sizeof(buffer));
+	size = 0;
+
+	/* Send command to gsm */
+	DRIVER_GSM_Write(gsmHandler->gsm, msgToSend,msgSize);
+
+	/* Read response from gsm  and set response for user */
+	switch(waitUntil(gsmHandler->gsm, buffer, &size, 3000, (const uint8_t*)"OK\r\n")){
+	case DRIVER_TIMEOUT:
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for receiving response from gsm has expired! Please try again command! \r\n");
+		DRIVER_GSM_Flush(gsmHandler->gsm);
+		return DRIVER_TIMEOUT;
+	case DRIVER_ERROR:
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError received from gsm! Try again or restart system! \r\n");
+		DRIVER_GSM_Flush(gsmHandler->gsm);
+		return DRIVER_ERROR;
+	case DRIVER_OK:
+		if(msgToSend[14] == '1') DRIVER_CONSOLE_Put(gsmHandler->console, (const uint8_t*)"\r\nHexadecimal format is now ON!\r\n");
+		else DRIVER_CONSOLE_Put(gsmHandler->console, (const uint8_t*)"\r\nDecimal format is now ON!\r\n");
+		DRIVER_GSM_Flush(gsmHandler->gsm);
+		return DRIVER_OK;
+
+	}
+	return DRIVER_OK;
+}
+
+/**
+  * @brief Connect gsm module to specified server.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -3038,7 +3178,7 @@ DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -3171,7 +3311,7 @@ DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/** Set port **/
 
 	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Insert server port: \r\n");
+	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Insert server port: \r\n ");
 	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
 
 	/* Response from user */
@@ -3219,7 +3359,7 @@ DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
 	memset(buffer,0,sizeof(buffer));
 	size = 0;
 
-	/* Set message for activating connection with server for gsm modul */
+	/* Set message for activating connection with server for gsm module */
 	uint8_t msgToSend[100];
 	uint8_t msgSize = 0;
 	memset(msgToSend,0, sizeof(msgToSend));
@@ -3237,11 +3377,11 @@ DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 	socketInit.PDPcontextNo = gsmHandler->activeSocketNo;
 
-	/* Set size of message to send to gsm modul */
+	/* Set size of message to send to gsm module */
 	while(msgToSend[msgSize] != '\r') msgSize++;
 	msgSize++;
 
-	/* Send command to gsm modul for connecting to server */
+	/* Send command to gsm module for connecting to server */
 	DRIVER_GSM_Write(gsmHandler->gsm, msgToSend, msgSize);
 
 	/* Read response from gsm  and set response for user */
@@ -3264,8 +3404,8 @@ DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
 }
 
 /**
-  * @brief Disonnect gsm modul to specified server.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @brief Disonnect gsm module to specified server.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_DisconnectFromServer(gsmHandler_t *gsmHandler)
@@ -3279,7 +3419,7 @@ DRIVERState_t GSM_DisconnectFromServer(gsmHandler_t *gsmHandler)
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm modul!\r\n");
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -3307,7 +3447,7 @@ DRIVERState_t GSM_DisconnectFromServer(gsmHandler_t *gsmHandler)
 
 /**
   * @brief Check IP connection for all channels(number of channels is preveously defined with macro MAX_SOCKET_NUMBER).
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_CheckConnection(gsmHandler_t *gsmHandler)
@@ -3317,6 +3457,14 @@ DRIVERState_t GSM_CheckConnection(gsmHandler_t *gsmHandler)
 	/* Reset buffer and his size */
 	memset(buffer,0,sizeof(buffer));
 	uint32_t size = 0;
+
+	/* Checking if user send correct gsm and console */
+	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
+	{
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
+		return DRIVER_ERROR;
+	}
+	DRIVER_GSM_Flush(gsmHandler->gsm);
 
 	/* Send command check connection with server */
 	DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cipstatus\r", sizeof("at+cipstatus\r"));
@@ -3353,7 +3501,7 @@ DRIVERState_t GSM_CheckConnection(gsmHandler_t *gsmHandler)
 
 /**
   * @brief Send data to server.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
@@ -3364,6 +3512,14 @@ DRIVERState_t GSM_SendToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* Reset buffer and his size */
 	memset(buffer,0,sizeof(buffer));
 	uint32_t size = 0;
+
+	/* Checking if user send correct gsm and console */
+	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
+	{
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
+		return DRIVER_ERROR;
+	}
+	DRIVER_GSM_Flush(gsmHandler->gsm);
 
 	/* Send command to send data to server */
 	DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cipsend\r", sizeof("at+cipsend\r"));
@@ -3451,24 +3607,36 @@ DRIVERState_t GSM_SendToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 /**
   * @brief Establish TCP Client connection with specified server.
-  * @param gsmHandler   GSM handle that contains everything about gsm modul.
+  * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
 DRIVERState_t EstablishTCPClientConnection(gsmHandler_t *gsmHandler, uint32_t timeout)
 {
-  if(GSM_NetworkRegistered(gsmHandler) == DRIVER_OK)
-  {
+	/* Checking if user send correct gsm and console */
+	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
+	{
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: incorrect console and gsm module!\r\n");
+		return DRIVER_ERROR;
+	}
+	DRIVER_GSM_Flush(gsmHandler->gsm);
+
+	/* Set mobile network, active pdp context, connect to server and set sending format of TCPIP protocol */
+	if(GSM_NetworkRegistered(gsmHandler) == DRIVER_OK)
+	{
 	  if(GSM_ActivePDPContext(gsmHandler,timeout) == DRIVER_OK)
 	  {
 		  if(GSM_ConnectToServer(gsmHandler,timeout) == DRIVER_OK)
 		  {
-			  return DRIVER_OK;
+			  if(GSM_SetSendingIPFormat(gsmHandler,timeout) == DRIVER_OK)
+				  return DRIVER_OK;
+			  else
+				  return DRIVER_ERROR;
 		  }
 		  else return DRIVER_ERROR;
 	  }
 	  else return DRIVER_ERROR;
-  }
-  else return DRIVER_ERROR;
+	}
+	else return DRIVER_ERROR;
 
 }

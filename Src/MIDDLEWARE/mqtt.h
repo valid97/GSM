@@ -225,10 +225,10 @@ typedef struct __MQTTVariableHeader_t
 
 	/* Fields for PUBLISH command type	 */
 	MQTTLen_t 				topicNameLen;
-	int						topicName;
+	uint32_t				topicName;
 
 	/* Fields for SUBSCRIBE command type */
-	int 					packeID;
+	uint32_t				packetID;
 
 } MQTTVariableHeader_t;
 
@@ -239,19 +239,19 @@ typedef struct __MQTTPayload_t
 {
 	/* Fields for CONNECT command type 	 */
 	MQTTLen_t	clientIDLen;
-	int			clientID;
+	uint8_t		*clientID;
 	MQTTLen_t 	userNameLen;
-	int			userName;
+	uint8_t		*userName;
 	MQTTLen_t 	passwordLen;
-	int			password;
+	uint8_t		*password;
 
 	/* Fields for PUBLISH command type	 */
 	MQTTLen_t	messageLen;
-	int 		messageName;
+	uint32_t	messageName;
 
 	/* Fields for SUBSCRIBE command type */
-	MQTTLen_t	topicLen;
-	int 		topicName;
+	uint32_t	topicLen;
+	uint8_t		topicName[2000];
 
 } MQTTPayload_t;
 
@@ -293,10 +293,12 @@ typedef struct __MQTTConfig_t
 /* Initialization operation functions ****************************************************************/
 MQTTState_t MQTT_Init(MQTTHandler_t *handler, MQTTConfig_t *config);
 
-MQTTState_t MQTT_Connect(MQTTHandler_t *handler, uint32_t timeout);
-MQTTState_t MQTT_Disconnect(MQTTHandler_t *handler, uint32_t timeout);
+MQTTState_t MQTT_Connect(MQTTHandler_t *handler);
+MQTTState_t MQTT_Disconnect(MQTTHandler_t *handler);
 MQTTState_t MQTT_Subscribe(MQTTHandler_t *handler, uint32_t timeout);
 MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout);
+MQTTState_t MQTT_Subscribe(MQTTHandler_t *handler, uint32_t timeout);
+MQTTState_t MQTT_Unsubscribe(MQTTHandler_t *handler, uint32_t timeout);
 MQTTState_t MQTT_PingReq(MQTTHandler_t *handler, uint32_t timeout);
 
 #endif /* MIDDLEWARE_MQTT_H_ */

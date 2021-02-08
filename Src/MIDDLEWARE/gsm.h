@@ -165,6 +165,7 @@ DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout);
 DRIVERState_t GSM_DeactiveGPRSPDPContext(gsmHandler_t *gsmHandler);
 DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout);
 DRIVERState_t GSM_SetAutoSendingTimerIP(gsmHandler_t *gsmHandler, uint32_t timeout);
+DRIVERState_t GSM_SetSendingIPFormat(gsmHandler_t *gsmHandler, uint32_t timeout);
 
 /* Functions for TCPIP support */
 DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout);

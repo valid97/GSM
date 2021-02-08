@@ -233,15 +233,18 @@ void DemoTask(void* pvParameters){
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"deactive gprs pdp - deactive Packet Data Protocol context for GPRS connection \r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"deactive pdp - deactive Packet Data Protocol context \r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"set timer - set or unset auto sending timer: the seconds after which the data will be sent to server\r\n");
+	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"set packet format - set type of TCPIP packet format(hexadecimal or decimal)\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"connect to server - connect with server with specified PDP context\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"disconnect from server - disconnect from server\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"check server connection/check server - check status of connection with server\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"send data to server - send data to server\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Command for mqtt protocol(only use this commands when you set connection to mobile network and connection to specified server/broker!): \r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"connect to broker - connect command sent to broker\r\n");
+	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"disconnect from broker - disconnect command sent to broker\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"publish - publish message to the topic on specified broke\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"subscribe - subscribe to topic on specified broker\r\n");
-	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"establish tcpip - does 3 commands: turn on mobile network, active pdp and connect to server\r\n");
+	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"ping/ping broker/ping req/ping request - send ping request to broker and wait for ping response from broker\r\n");
+	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"establish tcpip - does 4 commands: turn on mobile network, active pdp, connect to server and set packet format of TCPIP connection\r\n");
 	for(;;){
 
 		DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nWaiting input command...\r\n");
@@ -373,6 +376,11 @@ void DemoTask(void* pvParameters){
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nSeting auto sending timer ...");
 		  		  GSM_SetAutoSendingTimerIP(&gsmHandler, 30000);
 		  	  }
+		  else if(strstr((const char*)bufferConsole,(const char*)"set packet format\r") != NULL)
+		  	  {
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nSeting packet format for TCPIP protocol ...");
+		  		  GSM_SetSendingIPFormat(&gsmHandler, 30000);
+		  	  }
 		  else if(strstr((const char*)bufferConsole,(const char*)"connect to server\r") != NULL)
 		  	  {
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nConnecting to server...\r\n");
@@ -403,14 +411,32 @@ void DemoTask(void* pvParameters){
 		  	  }
 		  else if(strstr((const char*)bufferConsole,(const char*)"connect to broker\r") != NULL)
 		  	  {
-			  	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nConnectin to broker...\r\n");
-		  		  MQTT_Connect(&mqttHandler,30000);
+			  	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nConnecting to broker...\r\n");
+		  		  MQTT_Connect(&mqttHandler);
+		  	  }
+		  else if(strstr((const char*)bufferConsole,(const char*)"disconnect from broker\r") != NULL)
+		  	  {
+			  	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nDisonnecting to broker...\r\n");
+		  		  MQTT_Disconnect(&mqttHandler);
 		  	  }
 		  else if(strstr((const char*)bufferConsole,(const char*)"publish\r") != NULL)
 		  	  {
 			  	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nPublishing message to the topic...\r\n");
 		  		  MQTT_Publish(&mqttHandler,30000);
 		  	  }
+		  else if(strstr((const char*)bufferConsole,(const char*)"subscribe\r") != NULL)
+		  	  {
+			  	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nSubscribing to the topic...\r\n");
+		  		  MQTT_Subscribe(&mqttHandler,30000);
+		  	  }
+		  else if(strstr((const char*)bufferConsole,(const char*)"ping\r") != NULL ||
+				  strstr((const char*)bufferConsole,(const char*)"ping broker\r") != NULL ||
+				  strstr((const char*)bufferConsole,(const char*)"ping req\r") != NULL ||
+				  strstr((const char*)bufferConsole,(const char*)"ping request\r") != NULL)
+			  {
+				  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nPing broker...\r\n");
+				  MQTT_PingReq(&mqttHandler,30000);
+			  }
 		  else if(strstr((const char*)bufferConsole,(const char*)"establish tcpip\r") != NULL)
 		  	  {
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\nEstablishing TCPIP protocol ...\r\n");
@@ -450,15 +476,18 @@ void DemoTask(void* pvParameters){
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"deactive gprs pdp - deactive Packet Data Protocol context for GPRS connection \r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"deactive pdp - deactive Packet Data Protocol context \r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"set timer - set or unset auto sending timer: the seconds after which the data will be sent to server\r\n");
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"set packet format - set type of TCPIP packet format(hexadecimal or decimal)\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"connect to server - connect with server with specified PDP context\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"disconnect from server - disconnect from server\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"check server connection - check status of connection with server\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"send data to server - send data to server\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Command for mqtt protocol(only use this commands when you set connection to mobile network and connection to specified server/broker!): \r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"connect to broker - connect command sent to broker\r\n");
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"disconnect from broker - disconnect command sent to broker\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"publish - publish message to the topic on specified broke\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"subscribe - subscribe to topic on specified broker\r\n");
-		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"establish tcpip - does 3 commands: turn on mobile network, active pdp and connect to server\r\n");
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"ping/ping broker/ping req/ping request - send ping request to broker and wait for ping response from broker\r\n");
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"establish tcpip - does 4 commands: turn on mobile network, active pdp, connect to server and set packet format of TCPIP connection\r\n");
 		  	  }
 		  else if(strstr((const char*)bufferConsole,(const char*)"read\r") != NULL)
 		  {
@@ -470,7 +499,14 @@ void DemoTask(void* pvParameters){
 			  }
 			  else
 			  {
-				  DRIVER_CONSOLE_Put(&console, bufferGsm);
+				  uint8_t *startMsg = (uint8_t *)strstr((char*)bufferGsm,(const char*)mqttHandler.mqttPacket.payload.topicName);
+				  if(startMsg != NULL)
+				  {
+					  startMsg = startMsg + mqttHandler.mqttPacket.payload.topicLen;
+					  DRIVER_CONSOLE_Put(&console, startMsg);
+				  }
+				  else
+					  DRIVER_CONSOLE_Put(&console, bufferGsm);
 				  DRIVER_CONSOLE_Put(&console, (const uint8_t*)"\r\n");
 			  }
 			  sizeGsm = 0;
