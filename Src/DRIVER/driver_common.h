@@ -25,6 +25,7 @@
 #include "task.h"
 #include "semphr.h"
 
+
 /**
   * @brief  DRIVER Status structures definition
   */
@@ -32,7 +33,7 @@ typedef enum
 {
   DRIVER_OK       = 0x00,				/*!< Driver return status ok		 */
   DRIVER_ERROR    = 0x01,				/*!< Driver return status error		 */
-  DRIVER_TIMEOUT  = 0x02,				/*!< Driver return status timeout	 */
+  DRIVER_TIMEOUT  = 0x02				/*!< Driver return status timeout	 */
 } DRIVERState_t;
 
 /**

@@ -1,18 +1,18 @@
 /**
-  ***************************************************************************************************
+  *****************************************************************************************************************************************
   * @file    mqtt.h
   * @author  Valentina Denic
   * @brief   This file contains all the functions prototypes for the MQTT protocol. It requires
   * the existence of a TCP IP protocol implementation and modul which communicate using AT command
   * set.
   *
-  ***************************************************************************************************
+  *****************************************************************************************************************************************
   */
 
 #ifndef MIDDLEWARE_MQTT_H_
 #define MIDDLEWARE_MQTT_H_
 
-/* Includes -----------------------------------------------------------------------------------------------*/
+/* Includes ------------------------------------------------------------------------------------------------------------------------------*/
 #include <driver_console.h>
 #include <driver_common.h>
 #include <driver_gsm.h>
@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* Currently not using this defines */
 #define M_HEX 0x4d
 #define Q_HEX 0x51
 #define T_HEX 0x54
@@ -29,6 +30,7 @@
 #define MQQT_PROTOCOL_NAME(M_HEX,Q_HEX,T_HEX) (0x000000 |= ((M_HEX) << 6) & ((Q_HEX) << 4) & ((T_HEX) << 2) & (T_HEX))
 #define CTRLFLAGPUB(DUP,QOS,RETAIN) (0b0000 |= ((DUP) << 3) & ((QOS) << 1) & (RETAIN))
 
+/**** Currently not using any of this unums, but is good to know how mqtt works (it's described in the comments ) ****/
 /**
   * @brief  MQTT Status structures definition
   */
@@ -225,7 +227,7 @@ typedef struct __MQTTVariableHeader_t
 
 	/* Fields for PUBLISH command type	 */
 	MQTTLen_t 				topicNameLen;
-	uint32_t				topicName;
+	uint8_t					topicName[2000];
 
 	/* Fields for SUBSCRIBE command type */
 	uint32_t				packetID;
@@ -285,19 +287,19 @@ typedef struct __MQTTHandler_t
   */
 typedef struct __MQTTConfig_t
 {
-	DRIVERGsmHandler_t 		*gsmHandler;
-	DRIVERConsoleHandler_t 	*consoleHandler;
+	DRIVERGsmHandler_t 		*gsmHandler;			/*!< Gsm handle structure  		*/
+	DRIVERConsoleHandler_t 	*consoleHandler;		/*!< Console handle structure  	*/
 
 } MQTTConfig_t;
 
-/* Initialization operation functions ****************************************************************/
+/* Initialization operation functions ******************************************************************************************************/
 MQTTState_t MQTT_Init(MQTTHandler_t *handler, MQTTConfig_t *config);
 
+/* IO operation functions ******************************************************************************************************************/
 MQTTState_t MQTT_Connect(MQTTHandler_t *handler);
 MQTTState_t MQTT_Disconnect(MQTTHandler_t *handler);
-MQTTState_t MQTT_Subscribe(MQTTHandler_t *handler, uint32_t timeout);
-MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout);
-MQTTState_t MQTT_Subscribe(MQTTHandler_t *handler, uint32_t timeout);
+MQTTState_t MQTT_Subscribe(MQTTHandler_t *handler, uint32_t timeout, uint8_t *topicName);
+MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout,const uint8_t *topicInput, const uint8_t *messageInput);
 MQTTState_t MQTT_Unsubscribe(MQTTHandler_t *handler, uint32_t timeout);
 MQTTState_t MQTT_PingReq(MQTTHandler_t *handler, uint32_t timeout);
 

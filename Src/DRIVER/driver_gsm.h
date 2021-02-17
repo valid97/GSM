@@ -11,7 +11,6 @@
 
 #include <driver_common.h>
 
-
 /**
   * @brief  GSM INIT Status structures definition
   */
@@ -73,8 +72,8 @@ typedef struct __DRIVERGsmConfig_t
  *  */
 typedef struct
 {
-    uint8_t *startMsg;
-    uint32_t sizeMsg;
+    uint8_t *startMsg;					/*!< Pointer that indicates starting of received message fro console	 */
+    uint32_t sizeMsg;					/*!< Size of received message from console								 */
 }DRIVERGsmMsg_t;
 
 /* Initialization operation functions ***********************************************************************/

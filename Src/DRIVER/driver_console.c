@@ -35,32 +35,47 @@
 /* Includes -----------------------------------------------------------------------------------------------------------*/
 #include <driver_console.h>
 
+/* Flag that indicates accurency of end character for one message(char '\r') */
 volatile uint32_t msgCount = 0;
+
+/* Flag that indicates accurency of fullness of console receiving buffer */
 volatile bool buffFullFlag = false;
+
+/* Flag that indicates accurency of backslah character in uart interrupt */
 volatile bool backslashFlag = false;
 
 /* handler of circular buffer */
 volatile DRIVERCircularBuffer_t currentCircularBufferConsole;
+
 /* Handle of RxTask for notifiying */
 static TaskHandle_t RxTaskHandle;
 
 /* Console queue handle for transmiting messages*/
 QueueHandle_t ConsoleQueueTransmit;
+
 /* Console queue handle for receiving messages*/
 QueueHandle_t ConsoleQueueReceive;
 
 void TxTask(void* pvParameters);
 void RxTask(void* pvParameters);
 
+/* Start variable is for echo character back to console */
 uint8_t start = 0;
-uint8_t *backspaceEcho = (uint8_t *)"\b \b";
-uint8_t *backslashEcho = (uint8_t *)"\r\n";
-uint8_t *msgOverflow = (uint8_t *)"Buffer is full, message discarded!";
-/* Set queue array of messages received */
-DRIVERConsoleMsg_t msg[10];
-DRIVERConsoleMsg_t msgEcho;
 
-DRIVERConsoleMsg_t msgGet;
+/* This string erase  writen character on console and set cursor */
+uint8_t *backspaceEcho = (uint8_t *)"\b \b";
+
+/* This string write newline on console */
+uint8_t *backslashEcho = (uint8_t *)"\r\n";
+
+/* This string set message for upper layer whe buffer is full */
+const uint8_t *msgOverflow = (uint8_t *)"Buffer is full, message discarded!";
+
+/* Set queue array of received messages (message is ending with char '\r') */
+DRIVERConsoleMsg_t msg[10];
+
+/* Variable for echoing characters back to console when it's received */
+DRIVERConsoleMsg_t msgEcho;
 
 void RxISRCallback(UART_HandleTypeDef *huart)
 {
@@ -111,7 +126,7 @@ void RxISRCallback(UART_HandleTypeDef *huart)
 DRIVERState_t DRIVER_CONSOLE_Init(DRIVERConsoleHandler_t *handler, DRIVERConsoleConfig_t *config)
 {
 	/* Check the configuration handle allocation */
-	if (config == NULL)
+	if (config == NULL )
 	{
 		return DRIVER_ERROR;
 	}
@@ -125,6 +140,31 @@ DRIVERState_t DRIVER_CONSOLE_Init(DRIVERConsoleHandler_t *handler, DRIVERConsole
 	/* Check the configuration UART initialization */
 	if((*(config->UartInit))() == DRIVER_ERROR)
 	{
+		return DRIVER_ERROR;
+	}
+
+	ConsoleQueueTransmit = xQueueCreate( QUEUELENGTH, sizeof(DRIVERConsoleMsg_t)  );
+	if( ConsoleQueueTransmit == NULL )
+	{
+		/* The queue could not be created. */
+		return DRIVER_ERROR;
+	}
+
+	ConsoleQueueReceive = xQueueCreate( QUEUELENGTH, sizeof(DRIVERConsoleMsg_t) );
+	if( ConsoleQueueReceive == NULL )
+	{
+		/* The queue could not be created. */
+		return DRIVER_ERROR;
+	}
+
+	if(xTaskCreate(TxTask,"TxTask", 1024,( void * ) handler,3,NULL) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY )
+	{
+		/* The task could not be created. */
+		return DRIVER_ERROR;
+	}
+	if(xTaskCreate(RxTask,"RxTask", 1024,( void * ) handler,3,&RxTaskHandle) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY )
+	{
+		/* The task could not be created. */
 		return DRIVER_ERROR;
 	}
 
@@ -154,28 +194,9 @@ DRIVERState_t DRIVER_CONSOLE_Init(DRIVERConsoleHandler_t *handler, DRIVERConsole
 	currentCircularBufferConsole.pointerWrite 	= (uint8_t*)handler->rxBuffer;
 	currentCircularBufferConsole.pointerRead  	= (uint8_t*)handler->rxBuffer;
 
-	ConsoleQueueTransmit = xQueueCreate( QUEUELENGTH, sizeof(DRIVERConsoleMsg_t)  );
-	if( ConsoleQueueTransmit == NULL )
-	{
-		/* The queue could not be created. */
-		return DRIVER_ERROR;
-	}
-
-	ConsoleQueueReceive = xQueueCreate( QUEUELENGTH, sizeof(DRIVERConsoleMsg_t) );
-	if( ConsoleQueueReceive == NULL )
-	{
-		/* The queue could not be created. */
-		return DRIVER_ERROR;
-	}
-
 	handler->ConsoleQueueTransmit = ConsoleQueueTransmit;
 
 	handler->ConsoleQueueReceive = ConsoleQueueReceive;
-
-	if(xTaskCreate(TxTask,"TxTask", 1024,( void * ) handler,3,NULL) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY )
-		return DRIVER_ERROR;
-	if(xTaskCreate(RxTask,"RxTask", 1024,( void * ) handler,3,&RxTaskHandle) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY )
-		return DRIVER_ERROR;
 
 	return DRIVER_OK;
 }
@@ -210,16 +231,21 @@ DRIVERState_t DRIVER_CONSOLE_Put(DRIVERConsoleHandler_t *handler, const uint8_t 
   */
 DRIVERState_t DRIVER_CONSOLE_Get(DRIVERConsoleHandler_t *handler, uint8_t *userBuffer, uint32_t* dataSize, uint32_t timeout)
 {
+	DRIVERConsoleMsg_t msgGet;
 	uint32_t i = 0;
+
+	/* Whait for message in queue with timeout */
 	if(xQueueReceive(handler->ConsoleQueueReceive, &msgGet, timeout) == pdFALSE)
 		return DRIVER_TIMEOUT;
 
-	if(strcmp((char*)msgGet.startMsg,"Buffer is full, message discarded!") == 0)
+	/* If buffer is full set message for user and retur from function with error */
+	if(strcmp((char*)msgGet.startMsg,(const char*)msgOverflow) == 0)
 	{
 		strcpy((char*)userBuffer,(const char*)msgGet.startMsg);
 		return DRIVER_ERROR;
 	}
 
+	/* Copy size of received message */
 	*dataSize = msgGet.sizeMsg;
 
 	/* Copy whatever is in receiving buffer */
@@ -249,6 +275,7 @@ void TxTask(void* pvParameters){
 	DRIVERConsoleMsg_t msgTx;
 	for(;;){
 
+		/* Wait for message in queue and display it after receiving */
 		xQueueReceive(ConsoleQueueTransmit, &msgTx, portMAX_DELAY);
 		memcpy(txBuff,msgTx.startMsg ,msgTx.sizeMsg);
 		handler->State = COSNOLE_STATE_TRANSMIT;
@@ -270,6 +297,7 @@ void RxTask(void* pvParameters){
 		 NULL, /* Notified value is ommited. */
 		 portMAX_DELAY ); /* Block indefinitely. */
 
+		/* Achive atomic instruction with disabling interrupts */
 		__HAL_UART_DISABLE_IT(handler->uartBase, UART_IT_RXNE);
 
 		/* Return character to console(Echo message) */
@@ -307,7 +335,7 @@ void RxTask(void* pvParameters){
 		/* If buffer is full and no other messages are in it */
 		if(buffFullFlag == true && msgCount == 0)
 		{
-			msgEcho.startMsg = msgOverflow;
+			msgEcho.startMsg = (uint8_t *)msgOverflow;
 			msgEcho.sizeMsg = sizeof(msgOverflow);
 			/* Reset rx buffer */
 			memset(handler->rxBuffer,0,handler->rxSize);
@@ -321,7 +349,7 @@ void RxTask(void* pvParameters){
 			if(i > 10)
 			{
 				i = 0;
-				msgEcho.startMsg = msgOverflow;
+				msgEcho.startMsg = (uint8_t *)msgOverflow;
 				msgEcho.sizeMsg = sizeof(msgOverflow);
 			}
 			else

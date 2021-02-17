@@ -39,8 +39,6 @@
 /* Current global GSM handle */
 static volatile DRIVERGsmHandler_t *currentGsmHandle;
 
-uint32_t num = 0;
-
 /* handler of circular buffer */
 volatile DRIVERCircularBuffer_t currentCircularBufferGsm;
 
@@ -61,6 +59,7 @@ void RxTaskGsm(void* pvParameters);
 uint8_t rxStart[2000] = {0};
 DRIVERGsmMsg_t queueMsg = {.startMsg = rxStart,.sizeMsg = 0};
 DRIVERGsmMsg_t queueMsgRead;
+
 /**
   * @brief Callback function when receiving new character from UART is done.
   * @param huart          UART handle.
@@ -114,6 +113,34 @@ DRIVERState_t DRIVER_GSM_Init(DRIVERGsmHandler_t *handler, DRIVERGsmConfig_t *co
 		return DRIVER_ERROR;
 	}
 
+	GsmQueueTransmit = xQueueCreate( QUEUELENGTH, sizeof(DRIVERGsmMsg_t)  );
+	if( GsmQueueTransmit == NULL )
+	{
+		/* The queue could not be created. */
+		return DRIVER_ERROR;
+	}
+
+	GsmQueueReceive = xQueueCreate( QUEUELENGTH, sizeof(DRIVERGsmMsg_t) );
+	if( GsmQueueReceive == NULL )
+	{
+		/* The queue could not be created. */
+		return DRIVER_ERROR;
+	}
+
+	if(xTaskCreate(TxTaskGsm,"TxTaskGsm", 2048,( void *) handler,3,NULL) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY)
+	{
+		/* The task could not be created. */
+		return DRIVER_ERROR;
+	}
+
+	if(xTaskCreate(RxTaskGsm,"RxTaskGsm", 2048,( void *) handler,3,&RxTaskHandleGsm) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY)
+	{
+		/* The task could not be created. */
+			return DRIVER_ERROR;
+	}
+
+	memset((uint8_t*)handler->rxBuffer,0,handler->rxSize);
+
 	/* Set handler fields */
 	handler->rxBuffer 	= config->rxBuffer;
 
@@ -133,30 +160,9 @@ DRIVERState_t DRIVER_GSM_Init(DRIVERGsmHandler_t *handler, DRIVERGsmConfig_t *co
 	currentCircularBufferGsm.pointerWrite 	= (uint8_t*)handler->rxBuffer;
 	currentCircularBufferGsm.pointerRead  	= (uint8_t*)handler->rxBuffer;
 
-	memset((uint8_t*)handler->rxBuffer,0,handler->rxSize);
-
-	GsmQueueTransmit = xQueueCreate( QUEUELENGTH, sizeof(DRIVERGsmMsg_t)  );
-	if( GsmQueueTransmit == NULL )
-	{
-		/* The queue could not be created. */
-		return DRIVER_ERROR;
-	}
-
-	GsmQueueReceive = xQueueCreate( QUEUELENGTH, sizeof(DRIVERGsmMsg_t) );
-	if( GsmQueueReceive == NULL )
-	{
-		/* The queue could not be created. */
-		return DRIVER_ERROR;
-	}
-
 	handler->GsmQueueTransmit = GsmQueueTransmit;
 
 	handler->GsmQueueReceive = GsmQueueReceive;
-
-	if(xTaskCreate(TxTaskGsm,"TxTaskGsm", 2048,( void * ) handler,3,NULL) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY)
-		return DRIVER_ERROR;
-	if(xTaskCreate(RxTaskGsm,"RxTaskGsm", 2048,( void * ) handler,3,&RxTaskHandleGsm) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY)
-			return DRIVER_ERROR;
 
 	currentGsmHandle 	= handler;
 
@@ -218,7 +224,7 @@ DRIVERState_t DRIVER_GSM_Write(DRIVERGsmHandler_t *handler, const uint8_t* msg, 
 }
 
 /**
-  * @brief Task for transmition message to gsm modul
+  * @brief Task for transmition message to gsm module
   */
 void TxTaskGsm(void* pvParameters)
 {
@@ -233,7 +239,7 @@ void TxTaskGsm(void* pvParameters)
 }
 
 /**
-  * @brief Task for receiving message from gsm modul
+  * @brief Task for receiving message from gsm module
   */
 void RxTaskGsm(void* pvParameters)
 {
@@ -282,7 +288,7 @@ void RxTaskGsm(void* pvParameters)
 	}
 }
 /**
-  * @brief Bring receiving buffer for gsm modul to its initial state.
+  * @brief Bring receiving buffer for gsm module to its initial state.
   * @param handler      GSM handle.
   * @retval DRIVERState_t status
   */

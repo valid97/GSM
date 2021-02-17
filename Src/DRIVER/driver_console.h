@@ -85,8 +85,8 @@ typedef struct __DRIVERConsoleConfig_t
  *  */
 typedef struct
 {
-    uint8_t *startMsg;
-    uint32_t sizeMsg;
+    uint8_t *startMsg;							/*!< Pointer that indicates starting of received message fro console	 */
+    uint32_t sizeMsg;						 	/*!< Size of received message from console								 */
 }DRIVERConsoleMsg_t;
 
 /* Initialization operation functions ******************************************************************************************/

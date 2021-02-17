@@ -47,6 +47,7 @@
 	(#) Disconnect from server
 	(#) Check server connection
 	(#) Send data to server
+	(#) Establish TCP\IP connection(calling 4 function for this implementation)
 
 	(#) onlyPutNumber() is function that checks users input and demanding only to put number
 	(#) waitUntil() function is used to wait response from gsm by using TIME_Delay() function
@@ -59,7 +60,7 @@
 #include <gsm.h>
 
 /* Set default format of messages */
-GSMMsgFormat_t format = GSM_TEXT_MODE;
+GSMMsgFormat_t formatOfMsg = GSM_TEXT_MODE;
 
 /**
   * @brief Demand input to be only number.
@@ -146,11 +147,19 @@ DRIVERState_t waitUntil(DRIVERGsmHandler_t *gsm,uint8_t *buffer,uint32_t *size, 
 
 DRIVERState_t GSM_Init(gsmHandler_t *handler, gsmConfig_t *config)
 {
-	if(handler == NULL || config == NULL) return DRIVER_ERROR;
+	/* When i don't have any handler to initalize current handle, exit and return error */
+	if(handler == NULL || config == NULL || config->gsm == NULL || config->console == NULL)
+		return DRIVER_ERROR;
 
-	handler->gsm = config->gsm;
+	handler->gsm 		= config->gsm;
 
-	handler->console = config->console;
+	handler->console 	= config->console;
+
+	handler->mqtt 		= config->mqtt;
+
+	handler->activeSocketNo = 0;
+
+	handler->numSocketOpen 	= 0;
 
 	uint8_t i = 0;
 	for(; i != MAX_SOCKET_NUMBER; i++)
@@ -162,10 +171,6 @@ DRIVERState_t GSM_Init(gsmHandler_t *handler, gsmConfig_t *config)
 		handler->socket[i].port = PORT_NON;
 	}
 
-	handler->activeSocketNo = 0;
-
-	handler->numSocketOpen = 0;
-
 	handler->network.status = NETWORK_DISCONNECTED;
 
 	memset(handler->network.IPaddress,0,sizeof(handler->socket[i].IPaddress));
@@ -173,23 +178,19 @@ DRIVERState_t GSM_Init(gsmHandler_t *handler, gsmConfig_t *config)
 	return DRIVER_OK;
 }
 
-
 /**
   * @brief Set echo using AT command.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_SetEcho(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_SetEcho(gsmHandler_t *gsmHandler, uint32_t timeout, GSMEcho_t echoOnOFF, OutputStruct_t *outputStruct)
 {
 	/* Buffer for putting answer from gsm */
 	uint8_t buffer[100] = {0};
 
 	/* How many characters are received from gsm-it's importent to be zero initialize */
 	uint32_t size = 0;
-
-	/* Buffer of response from console about echo mode */
-	GSMEcho_t echoOnOFF = GSM_ECHO_ON;
 
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
@@ -198,54 +199,6 @@ DRIVERState_t GSM_SetEcho(gsmHandler_t *gsmHandler, uint32_t timeout)
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
-
-	/* Ask user witch mode of echo he wants */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"Enter 1 or 2 :\r\n 1: echo ON \r\n 2: echo OFF \r\n");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1') { echoOnOFF = GSM_ECHO_ON; break;}
-		else if(*buffer == '2') {echoOnOFF = GSM_ECHO_OFF; break;}
-		else
-		{
-
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
 
 	/* Reset buffer and his size */
 	memset(buffer,0,sizeof(buffer));
@@ -268,6 +221,7 @@ DRIVERState_t GSM_SetEcho(gsmHandler_t *gsmHandler, uint32_t timeout)
 		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_ERROR;
 	case DRIVER_OK:
+		strcpy((char*)outputStruct->gsmRsp,(const char*)buffer);
 		if(echoOnOFF == GSM_ECHO_ON) DRIVER_CONSOLE_Put(gsmHandler->console, (const uint8_t*)"\r\nEcho is now ON!\r\n");
 		else DRIVER_CONSOLE_Put(gsmHandler->console, (const uint8_t*)"\r\nEcho is now OFF!\r\n");
 		DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -283,7 +237,7 @@ DRIVERState_t GSM_SetEcho(gsmHandler_t *gsmHandler, uint32_t timeout)
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_MsgFormat(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_MsgFormat(gsmHandler_t *gsmHandler, uint32_t timeout, GSMMsgFormat_t format,OutputStruct_t *outputStruct)
 {
 	/* Buffer for putting answer from gsm */
 	uint8_t buffer[100] = {0};
@@ -298,57 +252,6 @@ DRIVERState_t GSM_MsgFormat(gsmHandler_t *gsmHandler, uint32_t timeout)
 		return DRIVER_ERROR;
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
-
-	/* Ask user witch mode he wants */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nEnter 1 or 2 :\r\n 1: SMS text mode \r\n 2: SMS pdu mode \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1') {format = GSM_TEXT_MODE; break;}
-		else if(*buffer == '2') {format = GSM_PDU_MODE; break;}
-		else
-		{
-
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
 
 	/* Set command for formating message */
 	uint8_t msgFormat[] = {'a','t','+','c','m','g','f','=', format == GSM_TEXT_MODE? '1':'0','\r'};
@@ -367,9 +270,11 @@ DRIVERState_t GSM_MsgFormat(gsmHandler_t *gsmHandler, uint32_t timeout)
 		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_ERROR;
 	case DRIVER_OK:
+		strcpy((char*)outputStruct->gsmRsp,(const char*)buffer);
 		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n");
 		if(format == GSM_TEXT_MODE) DRIVER_CONSOLE_Put(gsmHandler->console, (const uint8_t*)"SMS text mode now is set!");
 		else DRIVER_CONSOLE_Put(gsmHandler->console, (const uint8_t*)"SMS pdu mode now is set!");
+		formatOfMsg = format;
 		DRIVER_CONSOLE_Put(gsmHandler->console, (const uint8_t*)"\r\n");
 		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_OK;
@@ -384,21 +289,12 @@ DRIVERState_t GSM_MsgFormat(gsmHandler_t *gsmHandler, uint32_t timeout)
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_SetMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_SetMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout, const SetMsgStrgInputStruct_t inputStruct,OutputStruct_t *outputStruct)
 {
 
 	/* the phone message storage area,"ME" = 1 */
 	/* the SIM message storage area,"SM" = 2 */
 	/* the phone message storage area and SIM message storage area,"MT" = 3 */
-
-	/* Memory for reading and delating messages */
-	uint8_t memMsgReadDelate;
-
-	/* Memory for writing and sending messages */
-	uint8_t memMsgWriteSend;
-
-	/* Memory for receiving messages */
-	uint8_t memMsgReceive;
 
 	/* Buffer for putting answer from gsm */
 	uint8_t buffer[100] = {0};
@@ -427,164 +323,22 @@ DRIVERState_t GSM_SetMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
 
-	/* Ask user witch memory he wants to use */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter number for storage memory for reading and deleting messages :"
-		  "\r\n 1 phone memory \r\n 2 SIM memory \r\n");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1') {memMsgReadDelate = 1; break;}
-		else if(*buffer == '2') {memMsgReadDelate = 2; break;}
-		else
-		{
-
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
-
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n  Enter number for storage memory for writing and sending messages :"
-		  "\r\n 1 phone memory \r\n 2 SIM memory \r\n");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		/* If buffer is good, leave while loop */
-		if(*buffer == '1') {memMsgWriteSend = 1; break;}
-		else if(*buffer == '2') {memMsgWriteSend = 2; break;}
-		else
-		{
-
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
-
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n  Enter number for storage memory for receiving messages :"
-		  "\r\n 1 phone memory \r\n 2 SIM memory \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint32_t tickstart = TIME_GetTick();
-	while(TIME_GetTick() - tickstart < timeout)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1') {memMsgReceive = 1; break;}
-		else if(*buffer == '2') {memMsgReceive = 2; break;}
-		else
-		{
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-		}
-	}
-
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
-
 	/* Possible set of command for the type of storage */
-	if(memMsgReadDelate == 2 && memMsgWriteSend == 2 && memMsgReceive == 2)
+	if(inputStruct.memMsgReadDelate == 2 && inputStruct.memMsgWriteSend == 2 && inputStruct.memMsgReceive == 2)
 		DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cpms=\"SM\",\"SM\",\"SM\"\r",sizeof("at+cpms=\"SM\",\"SM\",\"SM\"\r"));
-	else if(memMsgReadDelate == 2 && memMsgWriteSend == 2 && memMsgReceive == 1)
+	else if(inputStruct.memMsgReadDelate == 2 && inputStruct.memMsgWriteSend == 2 && inputStruct.memMsgReceive == 1)
 		DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cpms=\"SM\",\"SM\",\"ME\"\r",sizeof("at+cpms=\"SM\",\"SM\",\"ME\"\r"));
-	else if(memMsgReadDelate == 2 && memMsgWriteSend == 1 && memMsgReceive == 2)
+	else if(inputStruct.memMsgReadDelate == 2 && inputStruct.memMsgWriteSend == 1 && inputStruct.memMsgReceive == 2)
 		DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cpms=\"SM\",\"ME\",\"SM\"\r",sizeof("at+cpms=\"SM\",\"ME\",\"SM\"\r"));
-	else if(memMsgReadDelate == 2 && memMsgWriteSend == 1 && memMsgReceive == 1)
+	else if(inputStruct.memMsgReadDelate == 2 && inputStruct.memMsgWriteSend == 1 && inputStruct.memMsgReceive == 1)
 		DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cpms=\"SM\",\"ME\",\"ME\"\r",sizeof("at+cpms=\"SM\",\"ME\",\"ME\"\r"));
-	else if(memMsgReadDelate == 1 && memMsgWriteSend == 2 && memMsgReceive == 2)
+	else if(inputStruct.memMsgReadDelate == 1 && inputStruct.memMsgWriteSend == 2 && inputStruct.memMsgReceive == 2)
 		DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cpms=\"ME\",\"SM\",\"SM\"\r",sizeof("at+cpms=\"ME\",\"SM\",\"SM\"\r"));
-	else if(memMsgReadDelate == 1 && memMsgWriteSend == 2 && memMsgReceive == 1)
+	else if(inputStruct.memMsgReadDelate == 1 && inputStruct.memMsgWriteSend == 2 && inputStruct.memMsgReceive == 1)
 		DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cpms=\"ME\",\"SM\",\"ME\"\r",sizeof("at+cpms=\"ME\",\"SM\",\"ME\"\r"));
-	else if(memMsgReadDelate == 1 && memMsgWriteSend == 1 && memMsgReceive == 2)
+	else if(inputStruct.memMsgReadDelate == 1 && inputStruct.memMsgWriteSend == 1 && inputStruct.memMsgReceive == 2)
 		DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cpms=\"ME\",\"ME\",\"SM\"\r",sizeof("at+cpms=\"ME\",\"ME\",\"SM\"\r"));
-	else if(memMsgReadDelate == 1 && memMsgWriteSend == 1 && memMsgReceive == 1)
+	else if(inputStruct.memMsgReadDelate == 1 && inputStruct.memMsgWriteSend == 1 && inputStruct.memMsgReceive == 1)
 		DRIVER_GSM_Write(gsmHandler->gsm, (const uint8_t*)"at+cpms=\"ME\",\"ME\",\"ME\"\r",sizeof("at+cpms=\"ME\",\"ME\",\"ME\"\r"));
 
 	/* Read response from gsm  and set response for user*/
@@ -598,6 +352,7 @@ DRIVERState_t GSM_SetMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout)
 		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_ERROR;
 	case DRIVER_OK:
+		strcpy((char*)outputStruct->gsmRsp,(const char*)buffer);
 		while(buffer[i] != ':') {i++;}
 					while(circle != 3)
 					{
@@ -722,7 +477,7 @@ DRIVERState_t GSM_TestMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout)
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout, const ListMsgInputStruct_t inputStruct, ListMsgOutputStruct_t *outputStruct)
 {
 	/* Buffer for reading message */
 	uint8_t buffer[1000] = {0};
@@ -730,10 +485,9 @@ DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 	/* How many characters were received */
 	uint32_t size = 0;
 
-	/* First variable is for pdu format, second is for text format*/
-	uint8_t status[] = {0};
-	uint8_t statusStr[11] = {0};
-	uint8_t statusSize = 0;
+	/* Set structure for response from gsm when using msg format function*/
+	uint8_t buffFormat[100] = {0};
+	OutputStruct_t outputStructMsgFormat ={.gsmRsp = buffFormat};
 
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
@@ -743,107 +497,31 @@ DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
 
-	/* Set command for formating message */
-	uint8_t msgFormat[] = {'a','t','+','c','m','g','f','=', format == GSM_TEXT_MODE? '1':'0','\r'};
-
-	/* Send command to gsm */
-	DRIVER_GSM_Write(gsmHandler->gsm, msgFormat,sizeof(msgFormat));
-
-	/* Read response from gsm  and set response for user*/
-	switch(waitUntil(gsmHandler->gsm, buffer, &size, 2000, (const uint8_t*)"OK\r\n")){
+	/* Set format of message */
+	switch(GSM_MsgFormat(gsmHandler, timeout, formatOfMsg, &outputStructMsgFormat)){
 	case DRIVER_TIMEOUT:
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for receiving response from gsm has expired! Please try again command! \r\n");
-		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_TIMEOUT;
 	case DRIVER_ERROR:
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError received from gsm! Try again or restart system! \r\n");
-		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_ERROR;
 	case DRIVER_OK:
 		break;
 	}
 
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
-
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Which type of message would you like to list?\r\n");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)" 1 Received unread message\r\n 2 Received read message\r\n");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)" 3 Stored unsent message\r\n 4 Stored sent message\r\n");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)" 5 All messages \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"Enter number: \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again command! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1') {status[0] = '1'; strcat((char*)statusStr,(const char*)"REC UNREAD");statusSize = 10;break;}
-		else if(*buffer == '2') {status[0] = '2';strcat((char*)statusStr,(const char*)"REC READ");statusSize = 8;break;}
-		else if(*buffer == '3') {status[0] = '3';strcat((char*)statusStr,(const char*)"STO UNSENT");statusSize = 10;break;}
-		else if(*buffer == '4') {status[0] = '4';strcat((char*)statusStr,(const char*)"STO SENT");statusSize = 8;break;}
-		else if(*buffer == '5') {status[0] = '5';strcat((char*)statusStr,(const char*)"ALL");statusSize = 3;break;}
-		else
-		{
-
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)("\r\n Put correct number!\r\n "));
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
-	if(incorrectInput == 3)
-	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-		DRIVER_GSM_Flush(gsmHandler->gsm);
-		return DRIVER_ERROR;
-	}
-	else incorrectInput = 1;
-
 	/* Set command about formating command for gsm */
-	uint8_t msgToSend[50] = {0};
+	uint8_t msgToSend[50] 	= {0};
+	uint8_t msgSize 		= 8;
 	strcat((char*)msgToSend,(const char*)"at+cmgl=");
-	uint8_t msgSize = 8;
-	if(format == GSM_TEXT_MODE)
+	if(formatOfMsg == GSM_TEXT_MODE)
 	{
 		msgToSend[8]= '\"';
-		strcat((char*)msgToSend,(const char*)statusStr);
-		msgToSend[8 + statusSize + 1] = '\"';
-		msgToSend[8 + statusSize + 2]= '\r';
-		msgSize = 8 + 3 + statusSize;
+		strcat((char*)msgToSend,(const char*)inputStruct.typeOfMsgStr);
+		msgToSend[8 + inputStruct.sizeOfTypeOfMsgStr + 1] = '\"';
+		msgToSend[8 + inputStruct.sizeOfTypeOfMsgStr + 2]= '\r';
+		msgSize = 8 + 3 + inputStruct.sizeOfTypeOfMsgStr;
 	}
 	else
 	{
-		msgToSend[msgSize++] = status[0];
+		msgToSend[msgSize++] = inputStruct.typeOfMsgChar;
 		msgToSend[msgSize++]= '\r';
 	}
 
@@ -858,8 +536,11 @@ DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 	uint8_t *startOK;
 	uint8_t *startCMGL;
+	uint8_t *startOfMsg;
     uint32_t endofMsg = 0;
     uint32_t startofMsg = 0;
+    uint32_t msgNo = 0;
+    uint8_t firstCopy = 0;
 	/* Read response from gsm  and set response for user*/
 	switch(waitUntil(gsmHandler->gsm, buffer, &size, 20000, (const uint8_t*)"OK\r\n")){
 	case DRIVER_TIMEOUT:
@@ -878,16 +559,101 @@ DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 			startofMsg = startCMGL - buffer;
 			endofMsg = startOK - buffer;
 			uint8_t msgtoDisplay[1000] = {0};
-			for(uint32_t i = startofMsg; i < endofMsg; i++)
+			uint32_t i = 0;
+			for(i = startofMsg; i < endofMsg; i++)
 			{
 				msgtoDisplay[i - startofMsg] = buffer[i];
 			}
+			i -= startofMsg;
 			DRIVER_CONSOLE_Put(gsmHandler->console, msgtoDisplay);
+
+			while(1)
+			{
+				if(firstCopy == 0)
+				{
+					/* Point to first index of message */
+					startOfMsg =  (uint8_t*)strstr((char*)buffer,(const char*)"+CMGL:");
+					firstCopy = 1;
+				}
+				else
+					startOfMsg =  (uint8_t*)strstr((char*)startOfMsg,(const char*)"+CMGL:");
+				if(startOfMsg != NULL)
+				{
+					/* Find start of index */
+					startOfMsg = startOfMsg + 7;
+
+					/* Set index of message */
+					if(*(startOfMsg + 1) == ',')
+						outputStruct->index[msgNo] = *startOfMsg - '0';
+					else
+					{
+						startOfMsg++;
+						outputStruct->index[msgNo] = 10 + (*startOfMsg - '0');
+					}
+
+					/* Find first '\"' for begining of type of msg  */
+					startOfMsg += 2;
+
+					/* Set type of message */
+					for(uint8_t i = 0; *startOfMsg != ','; i++)
+					{
+						outputStruct->typeOfMsg[msgNo][i] = *startOfMsg;
+						startOfMsg++;
+					}
+
+					/* Find '\"' for begining of number of msg */
+					startOfMsg = startOfMsg + 1;
+
+					/* Set number */
+					for(uint8_t i = 0; *startOfMsg != ','; i++)
+					{
+						(outputStruct->number[msgNo])[i] = *startOfMsg;
+						startOfMsg++;
+					}
+
+					/* If we have '\"' char we have time to copy, otherwise we are switching to copy message */
+					startOfMsg += 2;
+					if(*startOfMsg != '"')
+					{
+						while(*startOfMsg != '\n') startOfMsg++;
+					}
+					else
+					{
+						/* Set time if we have it */
+						for(uint8_t i = 0; *startOfMsg != '\r'; i++)
+						{
+							(outputStruct->timeReceived[msgNo])[i] = *startOfMsg;
+							startOfMsg++;
+						}
+
+						/* Set pointer to '\n' char */
+						startOfMsg++;
+					}
+
+					/* Point to first character of message */
+					startOfMsg++;
+
+					/* Set message */
+					for(uint8_t i = 0; *startOfMsg != '\r'; i++)
+					{
+						(outputStruct->message[msgNo])[i] = *startOfMsg;
+						startOfMsg++;
+					}
+
+					/*Go to next message */
+					msgNo++;
+				}
+				else
+				{	/* We copied all messages */
+					*outputStruct->msgNoStruct = msgNo;
+					break;
+				}
+			}
 			DRIVER_GSM_Flush(gsmHandler->gsm);
 		}
 		else if(startOK != NULL && startCMGL == NULL )
 		{
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"Storage empty, no messages this type!\r\n");
+			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"Storage empty, no messages of this type!\r\n");
 			DRIVER_GSM_Flush(gsmHandler->gsm);
 		}
 		return DRIVER_OK;
@@ -901,10 +667,10 @@ DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout, const ReadMsgInputStruct_t inputStruct, ReadMsgOutputStruct_t *outputStruct)
 {
 	/* Buffer for reading message */
-	uint8_t buffer[500] = {0};
+	uint8_t buffer[1000] = {0};
 
 	/* How many characters were received */
 	uint32_t size = 0;
@@ -917,57 +683,14 @@ DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
 
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter index of message to read (from 1 to number of messages): \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-		if(*buffer != '0') break;
-		else
-		{
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number greater then 0!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-		}
-
-	}
-
 	/* Set command reading message from gsm */
 	uint8_t msgToSend[50] = {0};
 	strcat((char*)msgToSend,(const char*)"at+cmgr=");
 	uint8_t msgSize = 8;
 	uint8_t i = 0;
-	for(i = 0; buffer[i] != '\r';i++)
+	for(i = 0; inputStruct.msgIndex[i] != '\r';i++)
 	{
-		msgToSend[8 + i] = buffer[i];
+		msgToSend[8 + i] = inputStruct.msgIndex[i];
 	}
 	msgToSend[8 + i] = '\r';
 	msgSize += i + 1;
@@ -981,6 +704,7 @@ DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 	uint8_t *startOK;
 	uint8_t *startCMGR;
+	uint8_t *startOfMsg;
     uint32_t endofMsg = 0;
     uint32_t startofMsg = 0;
 	/* Read response from gsm  and set response for user*/
@@ -1001,12 +725,66 @@ DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 			startofMsg = startCMGR - buffer;
 			endofMsg = startOK - buffer;
 			uint8_t msgtoDisplay[1000] = {0};
-			for(uint32_t i = startofMsg; i < endofMsg; i++)
+			uint32_t i = 0;
+			for(i = startofMsg; i < endofMsg; i++)
 			{
 				msgtoDisplay[i - startofMsg] = buffer[i];
 			}
 			DRIVER_CONSOLE_Put(gsmHandler->console, msgtoDisplay);
 			DRIVER_GSM_Flush(gsmHandler->gsm);
+
+			/* Set output structure */
+
+			startOfMsg =  (uint8_t*)strstr((char*)buffer,(const char*)"+CMGR:");
+			/* Find first '\"' for begining of type of msg  */
+			startOfMsg = startOfMsg + 7;
+
+			/* Set type of message */
+			for(uint8_t i = 0; *startOfMsg != ','; i++)
+			{
+				outputStruct->typeOfMsg[i] = *startOfMsg;
+				startOfMsg++;
+			}
+
+			/* Find '\"' for begining of number of msg */
+			startOfMsg = startOfMsg + 1;
+
+			/* Set number */
+			for(uint8_t i = 0; *startOfMsg != ','; i++)
+			{
+				outputStruct->number[i] = *startOfMsg;
+				startOfMsg++;
+			}
+
+			/* If we have '\"' char we have time to copy, otherwise we are switching to copy message */
+			startOfMsg += 2;
+			if(*startOfMsg != '"')
+			{
+				while(*startOfMsg != '\n') startOfMsg++;
+			}
+			else
+			{
+				/* Set time if we have it */
+				for(uint8_t i = 0; *startOfMsg != '\r'; i++)
+				{
+					outputStruct->timeReceived[i] = *startOfMsg;
+					startOfMsg++;
+				}
+
+				/* Set pointer to '\n' char */
+				startOfMsg++;
+			}
+
+			/* Point to first character of message */
+			startOfMsg++;
+
+			/* Set message */
+			for(uint8_t i = 0; *startOfMsg != '\r'; i++)
+			{
+				outputStruct->message[i] = *startOfMsg;
+				startOfMsg++;
+			}
+
 			return DRIVER_OK;
 		}
 		else if(startCMGR == NULL)
@@ -1025,7 +803,7 @@ DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t deleteType, uint8_t *userRsp, OutputStruct_t *outputStruct)
 {
 	/* Buffer for reading message */
 	uint8_t buffer[500] = {0};
@@ -1041,146 +819,6 @@ DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
 
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter which type of messagees would you like to delete: \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"1 Certain message \r\n 2 All messages of a particular type \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1') break;
-		else if(*buffer == '2') break;
-		else
-		{
-
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
-	/* Set type of preveous response and reset bufer and his size */
-	uint8_t deleteType = *buffer;
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
-
-	/* Request to user */
-	if(deleteType == '1')
-	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nWhich is the index of the message you want to delete? Enter number:\r\n ");
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-		/* Response from user */
-		uint32_t tickstart = TIME_GetTick();
-		while(TIME_GetTick() - tickstart < timeout)
-		{
-			/* function that request from user only number for answer */
-			switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-			case DRIVER_TIMEOUT:
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_TIMEOUT;
-			case DRIVER_ERROR:
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			case DRIVER_OK:
-				if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-				{
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-					DRIVER_GSM_Flush(gsmHandler->gsm);
-					return DRIVER_OK;
-				}
-				break;
-			}
-			break;
-		}
-	}
-	else
-	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nWhich type of message you want to delete?\r\n ");
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"1 Delete all received read messages?\r\n ");
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"2 Delete all received read and stored sent messages?\r\n ");
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"3 Delete all received read, stored sent messages and stored unsent messages?\r\n ");
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"4 Delete all messages of any type?\r\n ");
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-		/* Response from user */
-		incorrectInput = 1;
-		while(incorrectInput != 3)
-		{
-			/* function that request from user only number for answer */
-			switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-			case DRIVER_TIMEOUT:
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_TIMEOUT;
-			case DRIVER_ERROR:
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			case DRIVER_OK:
-				if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-				{
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-					DRIVER_GSM_Flush(gsmHandler->gsm);
-					return DRIVER_OK;
-				}
-				break;
-			}
-
-			if(*buffer == '1') break;
-			else if(*buffer == '2') break;
-			else if(*buffer == '3') break;
-			else if(*buffer == '4') break;
-			else
-			{
-
-				if(incorrectInput == 3)
-				{
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-					DRIVER_GSM_Flush(gsmHandler->gsm);
-					return DRIVER_ERROR;
-				}
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1, 2, 3 or 4! \r\n ");
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-				memset(buffer,0,sizeof(buffer));
-				size = 0;
-				incorrectInput++;
-			}
-		}
-	}
-
 	/* Set gsm command for deleting message*/
 	uint8_t msgToSend[50] = {0};
 	strcat((char*)msgToSend,"at+cmgd=");
@@ -1188,7 +826,7 @@ DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 	if(deleteType == '1')
 	{
-		strcat((char*)msgToSend,(const char*)buffer);
+		strcat((char*)msgToSend,(const char*)userRsp);
 		msgSize += size;
 	}
 	else
@@ -1198,7 +836,7 @@ DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 		msgSize++;
 		msgToSend[msgSize] = ',';
 		msgSize++;
-		strcat((char*)msgToSend,(const char*)buffer);
+		strcat((char*)msgToSend,(const char*)userRsp);
 		msgSize += 2;
 	}
 
@@ -1220,10 +858,10 @@ DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_ERROR;
 	case DRIVER_OK:
+		strcpy((char*)outputStruct,(const char*)buffer);
 		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Message(s) are deleted correctly!\r\n");
 		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_OK;
-
 	}
 	return DRIVER_OK;
 }
@@ -1234,13 +872,17 @@ DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout,const SendOrStoreInputStruct_t inputStruct,OutputStruct_t *outputStruct)
 {
 	/* Buffer for reading message */
 	uint8_t buffer[500] = {0};
 
 	/* How many characters were received */
 	uint32_t size = 0;
+
+	/* Set structure for response from gsm when using msg format function*/
+	uint8_t buffFormat[100] = {0};
+	OutputStruct_t outputStructMsgFormat ={.gsmRsp = buffFormat};
 
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
@@ -1250,282 +892,58 @@ DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
 
-	/* Set command for formating message */
-	uint8_t msgFormat[] = {'a','t','+','c','m','g','f','=', format == GSM_TEXT_MODE? '1':'0','\r'};
-
-	/* Send command to gsm */
-	DRIVER_GSM_Write(gsmHandler->gsm, msgFormat,sizeof(msgFormat));
-
-	/* Read response from gsm  and set response for user*/
-	switch(waitUntil(gsmHandler->gsm, buffer, &size, 1000, (const uint8_t*)"OK\r\n")){
+	/* Set format of message */
+	switch(GSM_MsgFormat(gsmHandler, timeout, formatOfMsg,&outputStructMsgFormat)){
 	case DRIVER_TIMEOUT:
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for receiving response from gsm has expired! Please try again command! \r\n");
-		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_TIMEOUT;
 	case DRIVER_ERROR:
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError received from gsm! Try again or restart system! \r\n");
-		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_ERROR;
 	case DRIVER_OK:
 		break;
 	}
 
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
-
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter number whether you want the message to be send immediately or first stored then later sent: \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"1 Immediately send\r\n 2 First store\r\n");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1') break;
-		else if(*buffer == '2') break;
-		else
-		{
-
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
-	incorrectInput = 1;
-
 	/* Message to send to gsm */
 	uint8_t msgToSend[50] = {0};
-	uint8_t sendOrStore[1] = {*buffer}; /* Variable for writing on the end of function if message is sent or stored to console */
+	uint8_t sendOrStore[1] = {inputStruct.sendOrStoreFlag}; /* Variable for writing on the end of function if message is sent or stored to console */
 	uint8_t msgSize = 0;
 
 	/* Ask if user want to send message from storage or directly send message we have to ask user that
 	 * and set command from gsm according to his response */
-	if(*buffer == '1')
+	if(*sendOrStore == '1')
 	{
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"Do you want to send message from storage or directly send? Enter number:\r\n");
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"1 Send from storage\r\n2 Send directly\r\n");
-		memset(buffer,0,sizeof(buffer));
-		size = 0;
-
-		/* Response from user */
-		while(incorrectInput != 3)
-		{
-			/* function that request from user only number for answer */
-			switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-			case DRIVER_TIMEOUT:
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_TIMEOUT;
-			case DRIVER_ERROR:
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			case DRIVER_OK:
-				if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-				{
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-					DRIVER_GSM_Flush(gsmHandler->gsm);
-					return DRIVER_OK;
-				}
-				break;
-			}
-
-			if(*buffer == '1') break;
-			else if(*buffer == '2') break;
-			else
-			{
-
-				if(incorrectInput == 3)
-				{
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-					DRIVER_GSM_Flush(gsmHandler->gsm);
-					return DRIVER_ERROR;
-				}
-
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-				memset(buffer,0,sizeof(buffer));
-				size = 0;
-				incorrectInput++;
-			}
-		}
-
-		if(*buffer == '1')
+		if(inputStruct.storeOrSendDirectFlag == '1')
 		{
 			strcat((char*)msgToSend,"at+cmss=");	/* Send message from storage 	*/
 			msgSize = 8;
+			uint32_t i = 0;
+			strcat((char*)msgToSend,(const char*)inputStruct.index);
+			for(; inputStruct.index[i] != '\r';i++);
+			msgSize += i;
+			msgToSend[msgSize++] = ',';
+			msgToSend[msgSize++] = '\"';
 		}
-		else if(*buffer == '2')
+		else if(inputStruct.storeOrSendDirectFlag == '2')
 		{
 			strcat((char*)msgToSend,"at+cmgs=\"");	/* Send message directly		*/
 			msgSize = 9;
 		}
 	}
 	/* If we had users response to store message we have to set that command */
-	else if(*buffer == '2')
+	else if(*sendOrStore == '2')
 	{
 		strcat((char*)msgToSend,"at+cmgw=\"");		/* Store message 				*/
 		msgSize = 9;
 	}
 
-	incorrectInput = 1;
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
-
-
-	/** If message need to be sent from storage we have to demand index of that message **/
-
-	if(strstr((char*)msgToSend,"at+cmss=") != NULL)
-	{
-
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Which is index of message you want to send?\r\n");
-
-		/* Response from user */
-		while(incorrectInput != 3)
-		{
-			/* function that request from user only number for answer */
-			switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-			case DRIVER_TIMEOUT:
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_TIMEOUT;
-			case DRIVER_ERROR:
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			case DRIVER_OK:
-				if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-				{
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-					DRIVER_GSM_Flush(gsmHandler->gsm);
-					return DRIVER_OK;
-				}
-				break;
-			}
-
-			if(*buffer == '0')
-			{
-
-				if(incorrectInput == 3)
-				{
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-					DRIVER_GSM_Flush(gsmHandler->gsm);
-					return DRIVER_ERROR;
-				}
-
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter greater then 0!\r\n ");
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-				memset(buffer,0,sizeof(buffer));
-				size = 0;
-				incorrectInput++;
-			}
-			else break;
-		}
-
-		strcat((char*)msgToSend,(const char*)buffer);
-		msgSize++;
-		msgToSend[msgSize] = ',';
-		msgSize++;
-		msgToSend[msgSize] = '\"';
-		msgSize++;
-	}
-
-	/** We need to ask user for number whom he want to send message **/
-
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter mobile phone number whom you want to send message: \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(DRIVER_CONSOLE_Get(gsmHandler->console, buffer, &size, timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-		uint8_t i = 0;
-		for(i = 0; i < size - 1; i++)
-		{
-			if((buffer[i] < '0') || (buffer[i] > '9'))
-			{
-				if(buffer[i] != '+')
-				{
-
-					if(incorrectInput == 3)
-					{
-						DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-						DRIVER_GSM_Flush(gsmHandler->gsm);
-						return DRIVER_ERROR;
-					}
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter only NUMBER greater then 0!\r\n");
-					incorrectInput++;
-					break;
-				}
-			}
-		}
-
-		/* If all characters are good, leave while, otherwise demand new input */
-		if(i == size - 1 && *buffer != '\r') break;
-		else
-		{
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-		}
-	}
+	/** We need set size of message **/
+	for(size = 0; inputStruct.number[size] != '\r';size++);
+	size++;
 
 	/* Set number in buffer(msgToSend) for seding number to gsm  */
 	uint8_t countryCode[] = "+381";
-	switch(*buffer){
+	switch(*inputStruct.number){
 	case '+':
-		strcat((char*)msgToSend,(const char*)buffer);
+		strcat((char*)msgToSend,(const char*)inputStruct.number);
 		msgSize += size;
 		break;
 	case '0':
@@ -1533,13 +951,13 @@ DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 		msgSize += sizeof(countryCode) - 1;
 		uint8_t strNum[20] = {0};
 		uint8_t i = 1;
-		for(i = 1;i < size; i++) strNum[i - 1] = buffer[i];
+		for(i = 1;i < size; i++) strNum[i - 1] = inputStruct.number[i];
 		strcat((char*)msgToSend, (const char*)strNum);
 		msgSize += i - 1;
 		break;
 	default:
 		strcat((char*)msgToSend, (const char*)countryCode);
-		strcat((char*)msgToSend, (const char*)buffer);
+		strcat((char*)msgToSend, (const char*)inputStruct.number);
 		msgSize += sizeof(countryCode) + size - 1;
 		break;
 	}
@@ -1548,13 +966,12 @@ DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 	msgToSend[msgSize] = '\r';
 	msgSize++;
 
-
-	/** If we don't have to send from storage we must frist write number to gsm
+	/** If we don't have to send from storage we must first write number to gsm
 	 * and wait for his response witch is going to be character ">" that mean
 	 * we have to set him message that we want to send **/
-
-	if(strstr((char*)msgToSend,"at+cmss=") == NULL)
+	if(inputStruct.storeOrSendDirectFlag != '1')
 	{
+
 		/* Reset buffer and his size */
 		memset(buffer,0,sizeof(buffer));
 		size = 0;
@@ -1582,45 +999,12 @@ DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 			else break;
 		}
 
-		/* Reset buffer and his size */
-		memset(buffer,0,sizeof(buffer));
-		size = 0;
-
-		/* Request to user */
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter message to send: \r\n ");
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-		/* Receive from user */
-		switch(DRIVER_CONSOLE_Get(gsmHandler->console, buffer, &size, timeout)){
-		case DRIVER_TIMEOUT:
-			*buffer = ESCAPE; /* <ESC> character */
-			DRIVER_GSM_Write(gsmHandler->gsm, buffer, 1);
-			waitUntil(gsmHandler->gsm, buffer, &size, 5000, (const uint8_t*)"OK");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for receiving response from gsm has expired! Please try again command! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError received, not enough space for receiving characters! Please update your buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end sending message */
-			{
-				*buffer = ESCAPE;
-				DRIVER_GSM_Write(gsmHandler->gsm, buffer, 1);
-				waitUntil(gsmHandler->gsm, buffer, &size, 5000, (const uint8_t*)"OK");
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Leaving command... \r\nMessage unsent!\r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
 		memset(msgToSend,0, sizeof(msgToSend));
 		msgSize = 0;
-		buffer[size - 1] = 26; /* <CTRL-Z> character */
-		strcat((char*)msgToSend,(const char*)buffer);
-		msgSize = size;
+		for(size = 0; inputStruct.message[size] != '\r';size++);
+		strcat((char*)msgToSend,(const char*)inputStruct.message);
+		msgToSend[size] = 26; /* <CTRL-Z> character */
+		msgSize = size + 1;
 	}
 
 	/* Reset buffer and hos size */
@@ -1642,6 +1026,7 @@ DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 		DRIVER_GSM_Flush(gsmHandler->gsm);
 		return DRIVER_ERROR;
 	case DRIVER_OK:
+		strcpy((char*)outputStruct,(const char*)buffer);
 		if(*sendOrStore == '1') DRIVER_CONSOLE_Put(gsmHandler->console, (const uint8_t*)"\r\n Message sent!\r\n");
 		else DRIVER_CONSOLE_Put(gsmHandler->console, (const uint8_t*)"\r\n Message stored!\r\n");
 		DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -1654,7 +1039,7 @@ DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout)
 /**************************************************** FROM HERE STARTS FUNCTIONS FOR NETWORK *******************************************************/
 /***************************************************************************************************************************************************/
 
-// IPADDRESS AND TYPE HAVE TO FINISH WITH '\0' CHARACTER!!
+// IP ADDRESS AND TYPE MUST TO FINISH WITH '\0' CHARACTER!!
 /**
   * @brief Open socket and set his state with parameters defined in socket variable.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
@@ -2162,13 +1547,10 @@ DRIVERState_t GSM_DetachFromGPRSService(gsmHandler_t *gsmHandler)
   * @param timeout      Timeout period for console.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout, SetPDPInputStruct_t inputStruct)
 {
-	uint8_t buffer[100];
+	uint8_t buffer[100] = {0};
 	uint32_t size = 0;
-
-	/* Reset buffer */
-	memset(buffer,0,sizeof(buffer));
 
 	/* Check if we have space to open new socket */
 	if(GSM_CheckOpenSocketNo(gsmHandler) == SOCKET_FULL)
@@ -2185,73 +1567,16 @@ DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
 
-
-	/* Request to user */
-	uint8_t maxSocNumStr[3];
-	memset(maxSocNumStr,0,sizeof(maxSocNumStr));
-	itoa(MAX_SOCKET_NUMBER,(char*) maxSocNumStr, 10);
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter number of which PDP context to use (range from 1 to ");
-	DRIVER_CONSOLE_Put(gsmHandler->console, maxSocNumStr);
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"): \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if( (buffer[0] == '1' && buffer[1] == '\r') || (buffer[0] == '2' && buffer[1] == '\r') || (buffer[0] == '3' && buffer[1] == '\r') ||
-		    (buffer[0] == '4' && buffer[1] == '\r') || (buffer[0] == '5' && buffer[1] == '\r') || (buffer[0] == '6' && buffer[1] == '\r') ||
-			(buffer[0] == '7' && buffer[1] == '\r') || (buffer[0] == '8' && buffer[1] == '\r') || (buffer[0] == '9' && buffer[1] == '\r') ||
-			(buffer[0] == '1' && buffer[1] == '0')  || (buffer[0] == '1' && buffer[1] == '1')  || (buffer[0] == '1' && buffer[1] == '2')  ||
-			(buffer[0] == '1' && buffer[1] == '3')  || (buffer[0] == '1' && buffer[1] == '4')  || (buffer[0] == '1' && buffer[1] == '5')  ||
-			(buffer[0] == '1' && buffer[1] == '6') )
-		{
-			break;
-		}
-		else
-		{
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError, failed input attempt! Please try again command!!\r\n ");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)("\r\n Put correct number!\r\n "));
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
-	/* Make pointer for storing message to send to gsm module */
+	/* set message that  will be sent to gsm */
 	uint8_t msgToSend[200] = {0};
 	uint32_t msgSize = 0;
 
-	/* Set command for echo mode */
+	/* Set command for seting pdp context on gsm module */
 	uint8_t PDPContextID[14];
 	memset(PDPContextID,0,sizeof(PDPContextID));
 	strcat((char*)PDPContextID,(const char*)"at+cgdcont=");
-	PDPContextID[11] = *buffer;
-	if(buffer[1] == '\r')
+	PDPContextID[11] = *inputStruct.PDPNo;
+	if(inputStruct.PDPNo[1] == '\r')
 	{
 		PDPContextID[12] = ',';
 		PDPContextID[13] = '\0';
@@ -2259,111 +1584,33 @@ DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 	else
 	{
-		PDPContextID[12] = buffer[1];
+		PDPContextID[12] = inputStruct.PDPNo[1];
 		PDPContextID[13] = ',';
 		PDPContextID[14] = '\0';
 		msgSize = 14;
 	}
 
-
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
-
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter number of witch packet data protocol you will be using:\r\n 1 IP(Internet Protocol)\r\n "
-			"2 IPV6(Internet Protocol, version 6)\r\n 3 PPP(Point to Point Protocol)\r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1' || *buffer == '2' || *buffer == '3') break;
-		else
-		{
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError, failed input attempt! Please try again command!!\r\n ");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)("\r\n Put correct number!\r\n "));
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
 	/* Set Packet Data Protocol type and
 	 * set size of message for sending command to gsm module */
-	uint8_t PDPType[10];
-	memset((char*)PDPType,0,sizeof(PDPType));
-	if( *buffer == '1') {strcpy((char*)PDPType,(const char*)"\"IP\","); msgSize += 5;}
-	else if(*buffer == '2') {strcpy((char*)PDPType,(const char*)"\"IPV6\","); msgSize += 7;}
-	else if(*buffer == '3') {strcpy((char*)PDPType,(const char*)"\"PPP\","); msgSize += 6;}
+	uint8_t PDPType[10] = {0};
+	if( *inputStruct.PDPTypeFlag == '1') {strcpy((char*)PDPType,(const char*)"\"IP\","); msgSize += 5;}
+	else if(*inputStruct.PDPTypeFlag == '2') {strcpy((char*)PDPType,(const char*)"\"IPV6\","); msgSize += 7;}
+	else if(*inputStruct.PDPTypeFlag == '3') {strcpy((char*)PDPType,(const char*)"\"PPP\","); msgSize += 6;}
 
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
-
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter access point name:\r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	switch(DRIVER_CONSOLE_Get(gsmHandler->console, buffer, &size, timeout)){
-	case DRIVER_TIMEOUT:
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-		return DRIVER_TIMEOUT;
-	case DRIVER_ERROR:
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-		return DRIVER_ERROR;
-	case DRIVER_OK:
-		if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-		{
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_OK;
-		}
-		break;
-	}
-
-	/* Set access point name */
-	uint8_t APNType[100];
-	memset(APNType,0,sizeof(APNType));
+	/* Find size of APNType */
 	uint32_t i = 0;
-	while(buffer[i] != '\r'){ APNType[i] = buffer[i]; i++; }
-
-	/* Set size of message for sending command to gsm module */
-	msgSize += size + 2;
+	for(; inputStruct.APNType[i] != '\r';i++);
+	msgSize += i;
 
 	/* Set buffer for sending command to gsm module to contains message  */
 	memset(msgToSend,0, msgSize);
 	strcat((char*)msgToSend,(const char*)PDPContextID);
 	strcat((char*)msgToSend,(const char*)PDPType);
 	strcat((char*)msgToSend,(const char*)"\"");
-	strcat((char*)msgToSend,(const char*)APNType);
-	strcat((char*)msgToSend,(const char*)"\"\r");
+	strcat((char*)msgToSend,(const char*)inputStruct.APNType);
+	msgSize++;
+	msgToSend[msgSize++] = '\"';
+	msgToSend[msgSize++] = '\r';
 
 	/* Reset buffer and his size */
 	memset(buffer,0,sizeof(buffer));
@@ -2560,9 +1807,10 @@ DRIVERState_t GSM_ShowPDPIP(gsmHandler_t *gsmHandler)
   * @brief Active Packet Data Protocol context for gsm module.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param PDP 			Index of Packet Data Protocol in format where PDP variable need to be ended with char '\r'!
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout, const uint8_t *PDP)
 {
 	uint8_t buffer[100];
 	uint32_t size = 0;
@@ -2570,6 +1818,12 @@ DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 	/* Reset buffer */
 	memset(buffer,0,sizeof(buffer));
+
+	if(strchr((char*)PDP,'\r') == NULL) {
+		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error: Set correct format of PDP argument!\r\n "
+				"Paramater PDP needs to finish with '\r' char! \r\n");
+		return DRIVER_ERROR;
+	}
 
 	/* Check if we have space to open new socket */
 	if(GSM_CheckOpenSocketNo(gsmHandler) == SOCKET_FULL)
@@ -2586,62 +1840,6 @@ DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
 
-	/* Request to user */
-	uint8_t maxSocNumStr[3];
-	memset(maxSocNumStr,0,sizeof(maxSocNumStr));
-	itoa(MAX_SOCKET_NUMBER,(char*) maxSocNumStr, 10);
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter number of PDP context (range from 1 to ");
-	DRIVER_CONSOLE_Put(gsmHandler->console, maxSocNumStr);
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"): \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if( (buffer[0] == '1' && buffer[1] == '\r') || (buffer[0] == '2' && buffer[1] == '\r') || (buffer[0] == '3' && buffer[1] == '\r') ||
-		    (buffer[0] == '4' && buffer[1] == '\r') || (buffer[0] == '5' && buffer[1] == '\r') || (buffer[0] == '6' && buffer[1] == '\r') ||
-			(buffer[0] == '7' && buffer[1] == '\r') || (buffer[0] == '8' && buffer[1] == '\r') || (buffer[0] == '9' && buffer[1] == '\r') ||
-			(buffer[0] == '1' && buffer[1] == '0')  || (buffer[0] == '1' && buffer[1] == '1')  || (buffer[0] == '1' && buffer[1] == '2')  ||
-			(buffer[0] == '1' && buffer[1] == '3')  || (buffer[0] == '1' && buffer[1] == '4')  || (buffer[0] == '1' && buffer[1] == '5')  ||
-			(buffer[0] == '1' && buffer[1] == '6') )
-		{
-			break;
-		}
-		else
-		{
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError, failed input attempt! Please try again command!!\r\n ");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)("\r\n Put correct number!\r\n "));
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
 	/* Make pointer for storing message to send to gsm module */
 	uint32_t msgSize = 0;
 
@@ -2652,29 +1850,25 @@ DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	uint8_t activePDP[14];
 	memset(activePDP,0,sizeof(activePDP));
 	strcat((char*)activePDP,(const char*)"at+cgact=1,");
-	activePDP[11] = *buffer;
-	if(buffer[1] == '\r')
+	activePDP[11] = *PDP;
+	if(PDP[1] == '\r')
 	{
 		activePDP[12] = '\r';
 		msgSize = 13;
-		socketInit.PDPcontextNo = *buffer - '0';
+		socketInit.PDPcontextNo = *PDP - '0';
 	}
 	else
 	{
-		activePDP[12] = buffer[1];
+		activePDP[12] = PDP[1];
 		activePDP[13] = '\r';
 		msgSize = 14;
-		socketInit.PDPcontextNo = 10 + (buffer[1] - '0');
+		socketInit.PDPcontextNo = 10 + (PDP[1] - '0');
 	}
 
 	memset(socketInit.IPaddress,0, sizeof(socketInit.IPaddress));
 	socketInit.port = PORT_NON;
 	socketInit.status = SOCKET_SET;
 	memset(socketInit.type,0, sizeof(socketInit.type));
-
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
 
 	/* Set command for activation PDP context */
 	DRIVER_GSM_Write(gsmHandler->gsm, activePDP, msgSize);
@@ -2747,7 +1941,7 @@ DRIVERState_t GSM_DeactiveGPRSPDPContext(gsmHandler_t *gsmHandler)
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout, const uint8_t *PDP)
 {
 	uint8_t buffer[100];
 	uint32_t size = 0;
@@ -2764,62 +1958,6 @@ DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
 
-	/* Request to user */
-	uint8_t maxSocNumStr[3];
-	memset(maxSocNumStr,0,sizeof(maxSocNumStr));
-	itoa(MAX_SOCKET_NUMBER,(char*) maxSocNumStr, 10);
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter number of PDP context (range from 1 to ");
-	DRIVER_CONSOLE_Put(gsmHandler->console, maxSocNumStr);
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"): \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if( (buffer[0] == '1' && buffer[1] == '\r') || (buffer[0] == '2' && buffer[1] == '\r') || (buffer[0] == '3' && buffer[1] == '\r') ||
-		    (buffer[0] == '4' && buffer[1] == '\r') || (buffer[0] == '5' && buffer[1] == '\r') || (buffer[0] == '6' && buffer[1] == '\r') ||
-			(buffer[0] == '7' && buffer[1] == '\r') || (buffer[0] == '8' && buffer[1] == '\r') || (buffer[0] == '9' && buffer[1] == '\r') ||
-			(buffer[0] == '1' && buffer[1] == '0')  || (buffer[0] == '1' && buffer[1] == '1')  || (buffer[0] == '1' && buffer[1] == '2')  ||
-			(buffer[0] == '1' && buffer[1] == '3')  || (buffer[0] == '1' && buffer[1] == '4')  || (buffer[0] == '1' && buffer[1] == '5')  ||
-			(buffer[0] == '1' && buffer[1] == '6') )
-		{
-			break;
-		}
-		else
-		{
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError, failed input attempt! Please try again command!!\r\n ");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)("\r\n Put correct number!\r\n "));
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
 	/* Make pointer for storing message to send to gsm module */
 	uint32_t msgSize = 0;
 
@@ -2830,29 +1968,25 @@ DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
 	uint8_t activePDP[14];
 	memset(activePDP,0,sizeof(activePDP));
 	strcat((char*)activePDP,(const char*)"at+cgact=0,");
-	activePDP[11] = *buffer;
-	if(buffer[1] == '\r')
+	activePDP[11] = *PDP;
+	if(PDP[1] == '\r')
 	{
 		activePDP[12] = '\r';
 		msgSize = 13;
-		socketInit.PDPcontextNo = *buffer - '0';
+		socketInit.PDPcontextNo = *PDP - '0';
 	}
 	else
 	{
 		activePDP[12] = buffer[1];
 		activePDP[13] = '\r';
 		msgSize = 14;
-		socketInit.PDPcontextNo = 10 + (buffer[1] - '0');
+		socketInit.PDPcontextNo = 10 + (PDP[1] - '0');
 	}
 
 	memset(socketInit.IPaddress,0, sizeof(socketInit.IPaddress));
 	socketInit.port = PORT_NON;
 	socketInit.status = SOCKET_CLOSE;
 	memset(socketInit.type,0, sizeof(socketInit.type));
-
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
 
 	/* Set command for deactivating PDP context */
 	DRIVER_GSM_Write(gsmHandler->gsm, activePDP, msgSize);
@@ -2881,9 +2015,11 @@ DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout)
   * @brief Set auto sending timer - the seconds after which the data will be sent to server
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param status  		Hexadecimal or decimal choice (can be only '1' or '2' character!).
+  * @param time			Can be parameter in range from 1 to 101.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_SetAutoSendingTimerIP(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_SetAutoSendingTimerIP(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t status, uint8_t *time)
 {
 	uint8_t buffer[100];
 
@@ -2899,125 +2035,17 @@ DRIVERState_t GSM_SetAutoSendingTimerIP(gsmHandler_t *gsmHandler, uint32_t timeo
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
 
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter option: \r\n 1 Not set timer \r\n 2 Set timer \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1' || *buffer == '2') break;
-		else
-		{
-
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
 	/* Set command for setting timer mode */
-	uint8_t timer[12] = {'a','t','+','c','i','p','a','t','s','=',*buffer == '2' ? '1':'0','\0'};
+	uint8_t timer[12] = {'a','t','+','c','i','p','a','t','s','=',status == '2' ? '1':'0','\0'};
 	uint8_t msgToSend[20] = {0};
 	uint8_t msgSize = 11;
 	strcat((char*)msgToSend,(const char*)timer);
 
-	if(*buffer == '2')
+	if(status == '2')
 	{
-		/* Reset buffer and his size */
-		memset(buffer,0,sizeof(buffer));
-		size = 0;
-
-		/* Request to user */
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter the seconds after which the data will be sent to server\r\n ");
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-		/* Response from user */
-		incorrectInput = 1;
-		while(incorrectInput != 3)
-		{
-			/* function that request from user only number for answer */
-			switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-			case DRIVER_TIMEOUT:
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_TIMEOUT;
-			case DRIVER_ERROR:
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			case DRIVER_OK:
-				if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-				{
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-					DRIVER_GSM_Flush(gsmHandler->gsm);
-					return DRIVER_OK;
-				}
-				break;
-			}
-			/* 3 types of input could be:
-			 * 1. buffer[0] in the range of 1 to 9 and buffer[1] is '\r' char
-			 * 2. buffer[0] in the range of 1 to 9 and buffer[1] in the range of 0 to 9 and buffer[2] is '\r' char
-			 * 3. buffer[0] is 1 and buffer[1] is 0 and buffer[2] is 0 */
-			if( ((buffer[0] == '1' || buffer[0] == '2' || buffer[0] == '3' || buffer[0] == '4' || buffer[0] == '5'    ||
-				  buffer[0] == '6' || buffer[0] == '7' || buffer[0] == '8' || buffer[0] == '9') && buffer[1] == '\r') ||
-
-				((buffer[0] == '1' || buffer[0] == '2' || buffer[0] == '3' || buffer[0] == '4' || buffer[0] == '5'    ||
-				  buffer[0] == '6' || buffer[0] == '7' || buffer[0] == '8' || buffer[0] == '9') &&
-				( buffer[1] == '1' || buffer[1] == '2' || buffer[1] == '3' || buffer[1] == '4' || buffer[1] == '5'    ||
-				  buffer[1] == '6' || buffer[1] == '7' || buffer[1] == '8' || buffer[1] == '9' || buffer[1] == '0')	&&
-				  buffer[2] == '\r') ||
-
-				 (buffer[0] == '1' && buffer[1] == '0' && buffer[2] == '0'))
-			{
-				strcat((char*)msgToSend,(const char*)",");
-				strcat((char*)msgToSend,(const char*)buffer);
-				msgSize += size + 1;
-				break;
-			}
-			else
-			{
-				if(incorrectInput == 3)
-				{
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-					DRIVER_GSM_Flush(gsmHandler->gsm);
-					return DRIVER_ERROR;
-				}
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number greater then 0!\r\n ");
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-				memset(buffer,0,sizeof(buffer));
-				size = 0;
-			}
-		}
+		strcat((char*)msgToSend,(const char*)",");
+		strcat((char*)msgToSend,(const char*)time);
+		msgSize += strlen((const char*)time) + 1;
 	}
 	else
 	{
@@ -3033,7 +2061,7 @@ DRIVERState_t GSM_SetAutoSendingTimerIP(gsmHandler_t *gsmHandler, uint32_t timeo
 	DRIVER_GSM_Write(gsmHandler->gsm, msgToSend, msgSize);
 
 	/* Read response from gsm  and set response for user*/
-	switch(waitUntil(gsmHandler->gsm, buffer, &size, 3000, (const uint8_t*)"OK\r\n")){
+	switch(waitUntil(gsmHandler->gsm, buffer, &size, 4000, (const uint8_t*)"OK\r\n")){
 	case DRIVER_TIMEOUT:
 		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for receiving response from gsm has expired! Please try again command! \r\n");
 		DRIVER_GSM_Flush(gsmHandler->gsm);
@@ -3057,9 +2085,10 @@ DRIVERState_t GSM_SetAutoSendingTimerIP(gsmHandler_t *gsmHandler, uint32_t timeo
   * @brief Set format of sending packets in TCPIP protocol (hexadecimal or decimal format).
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param format		Format of sending packet via TCPIP(hexadecimal-'1' or decimal-'2').
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_SetSendingIPFormat(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_SetSendingIPFormat(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t format)
 {
 	/* Buffer for putting answer from gsm */
 	uint8_t buffer[100] = {0};
@@ -3075,67 +2104,14 @@ DRIVERState_t GSM_SetSendingIPFormat(gsmHandler_t *gsmHandler, uint32_t timeout)
 	}
 	DRIVER_GSM_Flush(gsmHandler->gsm);
 
-	/* Ask user witch mode of echo he wants */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"Do you want to set hexadecimal way of sending data to server? \r\n");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"Enter number:\r\n 1 Yes(hexadecimal format)\r\n 2 No(decimal format) \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1' || *buffer == '2') break;
-		else
-		{
-
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
 	/* Set command for type of sending format */
 	uint8_t msgToSend[20] = {0};
 	uint8_t msgSize = 14;
 	strcat((char*)msgToSend, "at+cipsendhex=");
 
-	if(*buffer == '1') strcat((char*)msgToSend,"1\r");
-	else if(*buffer == '2') strcat((char*)msgToSend,"0\r");
+	if(format == '1') strcat((char*)msgToSend,"1\r");
+	else if(format == '2') strcat((char*)msgToSend,"0\r");
 	msgSize += 2;
-
-
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
 
 	/* Send command to gsm */
 	DRIVER_GSM_Write(gsmHandler->gsm, msgToSend,msgSize);
@@ -3164,16 +2140,16 @@ DRIVERState_t GSM_SetSendingIPFormat(gsmHandler_t *gsmHandler, uint32_t timeout)
   * @brief Connect gsm module to specified server.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param connectType  type of connection(it can be TCP-'1' or UDP-'2').
+  * @param ipAddr       IP address of server.
+  * @param port      	Port number of server.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout,ConnectSrvrInputStruct_t inputStruct)
 {
-	uint8_t buffer[100];
+	uint8_t buffer[100] = {0};
 	uint32_t size = 0;
 	Socket_t socketInit;
-
-	/* Reset buffer*/
-	memset(buffer,0,sizeof(buffer));
 
 	/* Checking if user send correct gsm and console */
 	if(gsmHandler->gsm == NULL && gsmHandler->console == NULL )
@@ -3185,179 +2161,46 @@ DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
 
 	/** Set type of connection **/
 
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Do you want to use TCP or UDP type of connection? \r\n Enter number : \r\n 1 TCP \r\n 2 UDP\r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	uint8_t incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* function that request from user only number for answer */
-		switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-
-		if(*buffer == '1' || *buffer == '2' ) break;
-		else
-		{
-			if(incorrectInput == 3)
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_ERROR;
-			}
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Enter number 1 or 2!\r\n ");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-			incorrectInput++;
-		}
-	}
-
     /* Set socket for initialization with his type */
-	if(*buffer == '1') strcpy((char*)socketInit.type,(const char*)"TCP\0" );
-	else strcpy((char*)socketInit.type,(const char*)"UDP\0" );
-
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
+	if(inputStruct.connectType == '1') strcpy((char*)socketInit.type,(const char*)"TCP\0" );
+	else if(inputStruct.connectType == '2') strcpy((char*)socketInit.type,(const char*)"UDP\0" );
 
 	/** Set IP address **/
 
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Insert IP address of server with whom you will connect to:\r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	incorrectInput = 1;
-	while(incorrectInput != 3)
-	{
-		/* Get IP address that contains numbers(0-9) and dots(.) Example: 125.2.0.129 */
-		switch(DRIVER_CONSOLE_Get(gsmHandler->console, buffer, &size, timeout)){
-		case DRIVER_TIMEOUT:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_TIMEOUT;
-		case DRIVER_ERROR:
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_ERROR;
-		case DRIVER_OK:
-			if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-			{
-				DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-				DRIVER_GSM_Flush(gsmHandler->gsm);
-				return DRIVER_OK;
-			}
-			break;
-		}
-		uint8_t i = 0;
-		for(i = 0; i < size - 1; i++)
-		{
-			/* Check if characters are only numbers from 0 to 9 or dots */
-			if((buffer[i] < '0') || (buffer[i] > '9'))
-			{
-				if(buffer[i] != '.')
-				{
-					if(incorrectInput == 3)
-					{
-						DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Error, failed input attempt! Please try again command! \r\n");
-						DRIVER_GSM_Flush(gsmHandler->gsm);
-						return DRIVER_ERROR;
-					}
-					DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Insert only numbers and dots in form of n.n.n.n , when n is number! \r\n");
-					incorrectInput++;
-					break;
-				}
-			}
-		}
-
-		/* If all characters are good, leave while, otherwise demand new input */
-		if(i == size - 1 && *buffer != '\r') break;
-		else
-		{
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-			memset(buffer,0,sizeof(buffer));
-			size = 0;
-		}
-	} // end of while
-
 	/* Set socket for initialization with his IP address */
-	uint8_t i = 0;
-	for(; buffer[i] != '\r'; i++)
-	{
-		socketInit.IPaddress[i] =  buffer[i];
+	uint8_t i = strlen((const char*)inputStruct.ipAddr);
+	if(strchr((char*)inputStruct.ipAddr,'\r') != NULL )
+	{	/* Length of IP address characters without '\r' */
+		i--;
 	}
+	strcpy((char*)socketInit.IPaddress,(const char*)inputStruct.ipAddr);
 	socketInit.IPaddress[i] = '\0';
-
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
 
 	/** Set port **/
 
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Insert server port: \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Response from user */
-	/* function that request from user only number for answer */
-	switch(onlyPutNumber(gsmHandler->console, buffer, &size, sizeof(buffer), timeout)){
-	case DRIVER_TIMEOUT:
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for input has expired! Please try again comand! \r\n");
-		return DRIVER_TIMEOUT;
-	case DRIVER_ERROR:
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Not enough space for receiving characters from gsm! Increase size of buffer! \r\n");
-		return DRIVER_ERROR;
-	case DRIVER_OK:
-		if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end function */
-		{
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Returning to waiting command... \r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_OK;
-		}
-		break;
-	}
-
-	/* Convert port number from characters value stored in buffer
-	 * to be integer type, base 16 */
 	uint32_t portNum = 0;
-	i = 0;
 	uint32_t weight = 1;
-	while(buffer[i] != '\r') i++;
-	while(i>0)
-	{
+	i = strlen((const char*)inputStruct.port);
+	if(strchr((char*)inputStruct.port,'\r') != NULL )
+	{	/* Length of port characters without '\r' */
 		i--;
-		portNum += (buffer[i] - '0')*weight;
-		weight *= 10;
 	}
 
 	/* Save port number in characters and set socket port */
-	uint8_t portChar[6];
-	memset(portChar,0,sizeof(portChar));
-	for(uint8_t i = 0; buffer[i] != '\r'; i++)
+	uint8_t portChar[6] = {0};
+	strcpy((char*)portChar,(const char*)inputStruct.port);
+	portChar[i] = '\0';
+
+	/* Convert port number from characters value stored in buffer
+	 * to be integer type, base 16 */
+	while(i>0)
 	{
-		portChar[i] =  buffer[i];
+		i--;
+		portNum += (inputStruct.port[i] - '0')*weight;
+		weight *= 10;
 	}
 	socketInit.port = portNum;
 
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
 
 	/* Set message for activating connection with server for gsm module */
 	uint8_t msgToSend[100];
@@ -3503,14 +2346,13 @@ DRIVERState_t GSM_CheckConnection(gsmHandler_t *gsmHandler)
   * @brief Send data to server.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param message 		String that contains message that will be sent.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_SendToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
+DRIVERState_t GSM_SendToServer(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t *message)
 {
-	uint8_t buffer[100];
+	uint8_t buffer[100] = {0};
 
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
 	uint32_t size = 0;
 
 	/* Checking if user send correct gsm and console */
@@ -3542,43 +2384,21 @@ DRIVERState_t GSM_SendToServer(gsmHandler_t *gsmHandler, uint32_t timeout)
 	memset(buffer,0,sizeof(buffer));
 	size = 0;
 
-	/* Request to user */
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Enter message to send: \r\n ");
-	DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)">>");
-
-	/* Receive from user */
-	switch(DRIVER_CONSOLE_Get(gsmHandler->console, buffer, &size, timeout)){
-	case DRIVER_TIMEOUT:
-		*buffer = ESCAPE; /* <ESC> character */
-		DRIVER_GSM_Write(gsmHandler->gsm, buffer, 1);
-		waitUntil(gsmHandler->gsm, buffer, &size, 5000, (const uint8_t*)"OK");
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError! Time for receiving response from gsm has expired! Please try again command! \r\n");
-		DRIVER_GSM_Flush(gsmHandler->gsm);
-		return DRIVER_TIMEOUT;
-	case DRIVER_ERROR:
-		DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\nError received, not enough space for receiving characters! Please update your buffer! \r\n");
-		DRIVER_GSM_Flush(gsmHandler->gsm);
-		return DRIVER_ERROR;
-	case DRIVER_OK:
-		if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end sending message */
-		{
-			*buffer = ESCAPE; /* <ESC> character (decimal 27) */
-			DRIVER_GSM_Write(gsmHandler->gsm, buffer, 1);
-			waitUntil(gsmHandler->gsm, buffer, &size, 5000, (const uint8_t*)"OK");
-			DRIVER_CONSOLE_Put(gsmHandler->console,(const uint8_t*)"\r\n Leaving command... \r\nData not send to server!\r\n");
-			DRIVER_GSM_Flush(gsmHandler->gsm);
-			return DRIVER_OK;
-		}
-		break;
-	}
-
-	uint8_t msgToSend[100];
+	uint8_t msgToSend[1000] = {0};
 	uint32_t msgSize = 0;
-	memset(msgToSend,0, sizeof(msgToSend));
-	buffer[size - 1] = 26; /* <CTRL-Z> character */
-	strcat((char*)msgToSend,(const char*)buffer);
+	size = strlen((const char*)message);
+	strcat((char*)msgToSend,(const char*)message);
 	msgSize = size;
-
+	/* If we send message with \r endning character, then we need to set control-z in that place */
+	if(strchr((char*)message,'\r') != NULL )
+	{
+		msgToSend[size -1] = 26; /* <CTRL-Z> character */
+	}
+	else
+	{
+		msgToSend[size] = 26; /* <CTRL-Z> character */
+		msgSize++;
+	}
 	/* Reset buffer and hos size */
 	memset(buffer,0,sizeof(buffer));
 	size = 0;
@@ -3624,15 +2444,21 @@ DRIVERState_t EstablishTCPClientConnection(gsmHandler_t *gsmHandler, uint32_t ti
 	/* Set mobile network, active pdp context, connect to server and set sending format of TCPIP protocol */
 	if(GSM_NetworkRegistered(gsmHandler) == DRIVER_OK)
 	{
-	  if(GSM_ActivePDPContext(gsmHandler,timeout) == DRIVER_OK)
+	  if(GSM_ActivePDPContext(gsmHandler,timeout,(const uint8_t*)"1\r") == DRIVER_OK)
 	  {
-		  if(GSM_ConnectToServer(gsmHandler,timeout) == DRIVER_OK)
-		  {
-			  if(GSM_SetSendingIPFormat(gsmHandler,timeout) == DRIVER_OK)
-				  return DRIVER_OK;
-			  else
-				  return DRIVER_ERROR;
-		  }
+			/* Set input structure */
+			ConnectSrvrInputStruct_t inputStruct;
+
+			inputStruct.connectType = '1';
+			inputStruct.ipAddr = (uint8_t*)"5.196.95.208";
+			inputStruct.port = (uint8_t*)"1883";
+			if(GSM_ConnectToServer(gsmHandler,timeout,inputStruct) == DRIVER_OK)
+			{
+				if(GSM_SetSendingIPFormat(gsmHandler,timeout,'1') == DRIVER_OK)
+					return DRIVER_OK;
+				else
+					return DRIVER_ERROR;
+			}
 		  else return DRIVER_ERROR;
 	  }
 	  else return DRIVER_ERROR;

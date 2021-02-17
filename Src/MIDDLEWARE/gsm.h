@@ -3,7 +3,7 @@
   * @file    gsm.h
   * @author  Valentina Denic
   * @brief   This file contains all the functions prototypes for middleware
-  *          layer for comunication between gsm modul and other parts of project(console, network conecetion).
+  *          layer for comunication between gsm modul and other parts of project(console, network connection).
   ***********************************************************************************************************
   */
 
@@ -16,6 +16,7 @@
 #include <driver_gsm.h>
 #include <stdlib.h>
 #include <time.h>
+#include <mqtt.h>
 
 #define MAX_SOCKET_NUMBER 16
 #define PORT_NON 65535
@@ -110,6 +111,8 @@ typedef struct __gsmHandler_t
 
 	DRIVERConsoleHandler_t *console;			/*!< Console handler 								*/
 
+	MQTTHandler_t *mqtt;						/*!< Mqtt handler 									*/
+
 	Socket_t socket[MAX_SOCKET_NUMBER + 1];		/*!< Socket structure(zero socket is not in use)	*/
 
 	uint8_t activeSocketNo;						/*!< Number of currently active socket 				*/
@@ -129,20 +132,145 @@ typedef struct __gsmConfig_t
 
 	DRIVERConsoleHandler_t *console;			/*!< Console handler 								*/
 
+	MQTTHandler_t *mqtt;						/*!< Mqtt handler 									*/
+
 }gsmConfig_t;
+
+
+/**
+  * @brief  GSM LIST MESSAGE INPUT Structure definition
+  */
+typedef struct
+{
+	char typeOfMsgChar;					/*!< Type of message to list when pdu format of message is setted		*/
+
+	uint8_t typeOfMsgStr[11];			/*!< Type of message to list when text format of message is setted		*/
+
+	uint8_t sizeOfTypeOfMsgStr;			/*!< Size of message to list when text format of message is setted		*/
+
+}ListMsgInputStruct_t;
+
+/**
+  * @brief  GSM LIST MESSAGE OUTPUT Structure definition
+  */
+typedef struct
+{
+	uint32_t index[20];				/*!< Index's of listed messages														*/
+
+	uint8_t *typeOfMsg[20];			/*!< Type of message (received read,received unread,sotred sent, stored unsent) 	*/
+
+	uint8_t *number[20];			/*!< Telephone number for specified message											*/
+
+	uint8_t *timeReceived[20];		/*!< Time when message was received													*/
+
+	uint8_t *message[20];			/*!< Message																		*/
+
+	uint32_t *msgNoStruct;			/*!< Number of message received 													*/
+
+}ListMsgOutputStruct_t;
+
+
+/**
+  * @brief  GSM READ MESSAGE INPUT Structure definition
+  */
+typedef struct
+{
+	uint8_t msgIndex[4];		/*!< Index of message to read	*/
+
+}ReadMsgInputStruct_t;
+
+/**
+  * @brief  GSM READ MESSAGE OUTPUT Structure definition
+  */
+typedef struct
+{
+	uint8_t *typeOfMsg;			/*!< Type of readed message (received read,received unread,sotred sent, stored unsent)	*/
+
+	uint8_t *number;			/*!< Telephone number for specified message												*/
+
+	uint8_t *timeReceived;		/*!< time when message was received														*/
+
+	uint8_t *message;			/*!< message																			*/
+
+}ReadMsgOutputStruct_t;
+
+/**
+  * @brief  GSM SEND OR STORE MESSAGE INPUT Structure definition
+  */
+typedef struct
+{
+	uint8_t *index;						/*!< Index of message to send 																			*/
+
+	uint8_t sendOrStoreFlag;			/*!< Flag that says to store or to send message															*/
+
+	uint8_t storeOrSendDirectFlag;		/*!< Flag that says, if we choose to send message, to store first and later send or to send directly	*/
+
+	uint8_t *number;					/*!< Number whom to send message 																		*/
+
+	uint8_t *message;					/*!< Message to send or store																			*/
+
+}SendOrStoreInputStruct_t;
+
+/**
+  * @brief  GSM SET MESSAGE STORAGE INPUT Structure definition
+  */
+typedef struct
+{
+	uint8_t memMsgReadDelate;		/*!< set storage for reading and deleting message (phone memory or SIM card)	*/
+
+	uint8_t memMsgWriteSend;		/*!< set storage for writing and sending message (phone memory or SIM card)		*/
+
+	uint8_t memMsgReceive;			/*!< set storage for receiving message (phone memory or SIM card)				*/
+
+}SetMsgStrgInputStruct_t;
+
+/**
+  * @brief  GSM SET PDP CONTEXT INPUT Structure definition
+  */
+typedef struct
+{
+	uint8_t *PDPNo;				/*!< PDP context number to set			*/
+
+	uint8_t *PDPTypeFlag;		/*!< PDP type (IP, IPV6, PPP)			*/
+
+	uint8_t *APNType;			/*!< Access oint name to connect with	*/
+
+}SetPDPInputStruct_t;
+
+/**
+  * @brief  GSM CONNECT TO SERVER INPUT Structure definition
+  */
+typedef struct
+{
+	uint8_t connectType;		/*!< Connection type(TCP,UDP)	*/
+
+	uint8_t *ipAddr;			/*!< IP address of server		*/
+
+	uint8_t *port;				/*!< Opened port of server		*/
+
+}ConnectSrvrInputStruct_t;
+
+/**
+  * @brief  GSM UNIVERSAL OUTPUT Structure definition
+  */
+typedef struct
+{
+	uint8_t *gsmRsp;		/*!< Universal buffer that contains response from gsm in functions	*/
+
+}OutputStruct_t;
 
 /* Initialization function *******************************************************************************************/
 DRIVERState_t GSM_Init(gsmHandler_t *handler, gsmConfig_t *config);
 
 /* IO operation functions ********************************************************************************************/
-DRIVERState_t GSM_SetEcho(gsmHandler_t *gsmHandler, uint32_t timeout);
-DRIVERState_t GSM_MsgFormat(gsmHandler_t *gsmHandler, uint32_t timeout);
-DRIVERState_t GSM_SetMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout);
+DRIVERState_t GSM_SetEcho(gsmHandler_t *gsmHandler, uint32_t timeout, GSMEcho_t echoOnOFF, OutputStruct_t *outputStruct);
+DRIVERState_t GSM_MsgFormat(gsmHandler_t *gsmHandler, uint32_t timeout, GSMMsgFormat_t format, OutputStruct_t *outputStruct);
+DRIVERState_t GSM_SetMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout,const SetMsgStrgInputStruct_t inputStruct,OutputStruct_t *outputStruct);
 DRIVERState_t GSM_TestMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout);
-DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout);
-DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout);
-DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout);
-DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout);
+DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout, const ListMsgInputStruct_t inputStruct, ListMsgOutputStruct_t *outputStruct);
+DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout,const ReadMsgInputStruct_t inputStruct, ReadMsgOutputStruct_t *outputStruct);
+DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t deleteType,uint8_t *userRsp, OutputStruct_t *outputStruct);
+DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout,const SendOrStoreInputStruct_t inputStruct,OutputStruct_t *outputStruct);
 
 /* Network operation functions ***************************************************************************************/
 DRIVERState_t GSM_NetworkRegistered(gsmHandler_t *gsmHandler);
@@ -157,22 +285,24 @@ DRIVERState_t GSM_SetWirelessConnectionGPRS(gsmHandler_t *gsmHandler);
 DRIVERState_t GSM_GetLocalIPAddress(gsmHandler_t *gsmHandler);
 DRIVERState_t GSM_AttachToGPRSService(gsmHandler_t *gsmHandler);
 DRIVERState_t GSM_DetachFromGPRSService(gsmHandler_t *gsmHandler);
-DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout);
+DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout, SetPDPInputStruct_t inputStruct);
 DRIVERState_t GSM_CheckSettedPDPContext(gsmHandler_t *gsmHandler);
 DRIVERState_t GSM_CheckActivePDPContext(gsmHandler_t *gsmHandler);
 DRIVERState_t GSM_ShowPDPIP(gsmHandler_t *gsmHandler);
-DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout);
+DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout, const uint8_t *PDP);
 DRIVERState_t GSM_DeactiveGPRSPDPContext(gsmHandler_t *gsmHandler);
-DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout);
-DRIVERState_t GSM_SetAutoSendingTimerIP(gsmHandler_t *gsmHandler, uint32_t timeout);
-DRIVERState_t GSM_SetSendingIPFormat(gsmHandler_t *gsmHandler, uint32_t timeout);
+DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout, const uint8_t *PDP);
+DRIVERState_t GSM_SetAutoSendingTimerIP(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t status, uint8_t *time);
+DRIVERState_t GSM_SetSendingIPFormat(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t format);
 
 /* Functions for TCPIP support */
-DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout);
+DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout,ConnectSrvrInputStruct_t inputStruct);
 DRIVERState_t GSM_DisconnectFromServer(gsmHandler_t *gsmHandler);
 DRIVERState_t GSM_CheckConnection(gsmHandler_t *gsmHandler);
-DRIVERState_t GSM_SendToServer(gsmHandler_t *gsmHandler, uint32_t timeout);
+DRIVERState_t GSM_SendToServer(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t *message);
 
 DRIVERState_t EstablishTCPClientConnection(gsmHandler_t *gsmHandler, uint32_t timeout);
+
+DRIVERState_t onlyPutNumber(DRIVERConsoleHandler_t *console, uint8_t *buffer, uint32_t *size, uint32_t bufSize, uint32_t timeout);
 
 #endif /* MIDDLEWARE_GSM_H_ */

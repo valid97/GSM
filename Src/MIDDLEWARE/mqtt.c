@@ -8,6 +8,7 @@
   *           + Initialization function
   *           + Connect to broker function
   *           + Publish message to topic on broker function
+  *           + Subscribe to topic on broker function
   *           + Function that set hexadecimal format of sending TCPIP packet(needed in mqtt protocol)
   *           + Additional function for number base convertion
   *
@@ -23,6 +24,7 @@
     (#) Connect to broker with MQTT_Connect() function
     (#) Set hexadecimal format of sending packets to broker with MQTT_SetHexFormat() function
     (#) Publish message to topic on connected broker with MQTT_Publish() function
+    (#) Subscribe to the specified topic on broker with  MQTT_Subscribe() function
 
   @endverbatim
   *
@@ -467,9 +469,11 @@ MQTTState_t MQTT_Disconnect(MQTTHandler_t *handler)
   * @brief Publish message to a specific topic in broker.
   * @param handler	   	Handle that contains everything about mqtt protocol (which gsm will be used and which console).
   * @param timeout      Timeout period for console.
+  * @param topicName    Name of topic.
+  * @param message      Message that will be published to the topic.
   * @retval DRIVERState_t status
   */
-MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout){
+MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout,const uint8_t *topicName, const uint8_t *message){
 
 	/* Buffer for reading message */
 	uint8_t buffer[2000] = {0};
@@ -477,6 +481,11 @@ MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout){
 	/* How many characters were received */
 	uint32_t size = 0;
 
+	if(topicName == NULL || message == NULL)
+	{
+		DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\n Error: incorrect input arguments! Please try again with correct arguments!\r\n");
+		return DRIVER_ERROR;
+	}
 	/* Checking if user send correct gsm and console */
 	if(handler->gsmHandler == NULL && handler->consoleHandler == NULL )
 	{
@@ -485,42 +494,25 @@ MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout){
 	}
 	DRIVER_GSM_Flush(handler->gsmHandler);
 
-	/* Request to user */
-	DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\n Enter topic name: \r\n ");
-	DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)">>");
+	/** Set topic **/
 
-	/* Receive from user */
-	switch(DRIVER_CONSOLE_Get(handler->consoleHandler, buffer, &size, timeout)){
-	case DRIVER_TIMEOUT:
-		DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\nError! Time for receiving response from gsm has expired! Please try again command! \r\n");
-		DRIVER_GSM_Flush(handler->gsmHandler);
-		return MQTT_TIMEOUT;
-	case DRIVER_ERROR:
-		DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\nError received, not enough space for receiving characters! Please update your buffer! \r\n");
-		DRIVER_GSM_Flush(handler->gsmHandler);
-		return MQTT_ERROR;
-	case DRIVER_OK:
-		if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end sending message */
-		{
-			DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\n Leaving command... \r\nMessage unsent!\r\n");
-			DRIVER_GSM_Flush(handler->gsmHandler);
-			return MQTT_OK;
-		}
-		break;
-	}
-
-	uint32_t topic[1000] 	= {0};
-	uint8_t topicHex[1000] 	= {0};
+	uint32_t topic[2000] 	= {0};
+	uint8_t topicHex[2000] 	= {0};
 	uint8_t topicLen[10] 	= {0};
 	uint8_t topicHexByteNo 	= 0;
-	uint32_t topicLenDec	= size - 1; // length of topic in decimal number
+	uint32_t topicLenDec	= strlen((const char*)topicName); // length of topic in decimal number
 	uint32_t i 				= 0;
 	uint32_t indexHexTopic	= 0;
 
+	if(strchr((char*)topicName,'\r') != NULL )
+	{	/* Length of topic characters without '\r' */
+		topicLenDec--;
+	}
+
 	/* Convert ASCII code to integer value */
-	for(; buffer[i] != '\r'; i++)
+	for(; i != topicLenDec; i++)
 	{
-		topic[i] = buffer[i] - '\0';
+		topic[i] = topicName[i] - '\0';
 	}
 
 	i = 0;
@@ -540,47 +532,25 @@ MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout){
     /* reverse order of characters in array */
     rverseArray(topicLen, 0, topicByteNo*2 - 1);
 
+    /* Set message to publish */
 
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
-
-	/* Request to user */
-	DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\n Enter message to publish: \r\n ");
-	DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)">>");
-
-	/* Receive from user */
-	switch(DRIVER_CONSOLE_Get(handler->consoleHandler, buffer, &size, timeout)){
-	case DRIVER_TIMEOUT:
-		DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\nError! Time for receiving response from gsm has expired! Please try again command! \r\n");
-		DRIVER_GSM_Flush(handler->gsmHandler);
-		return DRIVER_TIMEOUT;
-	case DRIVER_ERROR:
-		DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\nError received, not enough space for receiving characters! Please update your buffer! \r\n");
-		DRIVER_GSM_Flush(handler->gsmHandler);
-		return DRIVER_ERROR;
-	case DRIVER_OK:
-		if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end sending message */
-		{
-			DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\n Leaving command... \r\nMessage unsent!\r\n");
-			DRIVER_GSM_Flush(handler->gsmHandler);
-			return DRIVER_OK;
-		}
-		break;
-	}
-
-	uint32_t msg[1000] 		= {0};
-	uint8_t msgHex[1000] 	= {0};
+	uint32_t msg[2000] 		= {0};
+	uint8_t msgHex[2000] 	= {0};
 	uint8_t msgLen[10] 		= {0};
 	uint8_t msgHexByteNo 	= 0;
-    uint32_t msgLenDec 		= size - 1;
+    uint32_t msgLenDec 		= strlen((const char*)message);
 	uint32_t indexHexMsg	= 0;
 	i 						= 0;
 
+	if(strchr((char*)message,'\r') != NULL )
+	{	/* Length of message characters without '\r' */
+		msgLenDec--;
+	}
+
 	/* Convert ASCII code to integer value */
-	for(; buffer[i] != '\r'; i++)
+	for(; i != msgLenDec; i++)
 	{
-		msg[i] = buffer[i] - '\0';
+		msg[i] = message[i] - '\0';
 	}
 
 	i = 0;
@@ -602,7 +572,7 @@ MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout){
 
     /* Set remaining length */
     uint32_t remainLen128[10] = {0};
-    uint32_t remainLenDec = topicLenDec +msgLenDec + 2; // treba  +2 jos
+    uint32_t remainLenDec = topicLenDec + msgLenDec + 2; /* need to be added plus 2 if we are using length of message when we are sending */
 
     uint8_t byteNo = convDecToBase128(remainLen128, &remainLenDec);
     addCB(remainLen128, byteNo);
@@ -621,7 +591,7 @@ MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout){
     }
 
     /* Set message to send to server */
-	uint8_t msgToSend[1000];
+	uint8_t msgToSend[4000];
 	uint32_t msgSize = 0;
 	memset(msgToSend,0,sizeof(msgToSend));
 
@@ -683,10 +653,6 @@ MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout){
 
 	msgToSend[msgSize++] = '1';
 	msgToSend[msgSize++] = 'a';
-
-	/* Reset buffer and his size */
-	memset(buffer,0,sizeof(buffer));
-	size = 0;
 
 	/******   SEND COMMAND FOR TCP/IP SENDING DATA   *****/
 	/* Send command to send data to server */
@@ -782,9 +748,10 @@ MQTTState_t MQTT_Publish(MQTTHandler_t *handler, uint32_t timeout){
   * @brief Subscribe to broker on specified topic.
   * @param handler	   	Handle that contains everything about mqtt protocol (which gsm will be used and which console).
   * @param timeout      Timeout period for console.
+  * @param topicName    Name of topic.
   * @retval DRIVERState_t status
   */
-MQTTState_t MQTT_Subscribe(MQTTHandler_t *handler, uint32_t timeout)
+MQTTState_t MQTT_Subscribe(MQTTHandler_t *handler, uint32_t timeout, uint8_t *topicName)
 {
 	/* Buffer for reading message */
 	uint8_t buffer[2000] = {0};
@@ -800,44 +767,25 @@ MQTTState_t MQTT_Subscribe(MQTTHandler_t *handler, uint32_t timeout)
 	}
 	DRIVER_GSM_Flush(handler->gsmHandler);
 
-	/* Request to user */
-	DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\n Enter topic name: \r\n ");
-	DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)">>");
-
-	/* Receive from user */
-	switch(DRIVER_CONSOLE_Get(handler->consoleHandler, buffer, &size, timeout)){
-	case DRIVER_TIMEOUT:
-		DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\nError! Time for receiving response from gsm has expired! Please try again command! \r\n");
-		DRIVER_GSM_Flush(handler->gsmHandler);
-		return MQTT_TIMEOUT;
-	case DRIVER_ERROR:
-		DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\nError received, not enough space for receiving characters! Please update your buffer! \r\n");
-		DRIVER_GSM_Flush(handler->gsmHandler);
-		return MQTT_ERROR;
-	case DRIVER_OK:
-		if(strstr((char*)buffer,(const char*)"\e") != NULL) /* if escape code <ESC> occurs end sending message */
-		{
-			DRIVER_CONSOLE_Put(handler->consoleHandler,(const uint8_t*)"\r\n Leaving command... \r\nMessage unsent!\r\n");
-			DRIVER_GSM_Flush(handler->gsmHandler);
-			return MQTT_OK;
-		}
-		break;
-	}
-
 	uint8_t topicASCII[2000] = {0};
 	uint32_t topic[2000] 	= {0};
 	uint8_t topicHex[3000] 	= {0};
 	uint8_t topicLen[10] 	= {0};
 	uint8_t topicHexByteNo 	= 0;
-	uint32_t topicLenDec	= size - 1; // length of topic in decimal number
+	uint32_t topicLenDec	= strlen((const char*)topicName); // length of topic in decimal number
 	uint32_t i 				= 0;
 	uint32_t indexHexTopic	= 0;
 
+	if(strchr((char*)topicName,'\r') != NULL )
+	{	/* Length of topic characters without '\r' */
+		topicLenDec--;
+	}
+
 	/* Convert ASCII code to integer value */
-	for(; buffer[i] != '\r'; i++)
+	for(; i != topicLenDec; i++)
 	{
-		topic[i] = buffer[i] - '\0';
-		topicASCII[i] = buffer[i];
+		topic[i] = topicName[i] - '\0';
+		topicASCII[i] = topicName[i];
 	}
 
 	i = 0;
