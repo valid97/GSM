@@ -287,6 +287,8 @@ DRIVERState_t GSM_MsgFormat(gsmHandler_t *gsmHandler, uint32_t timeout, GSMMsgFo
   * @brief Set message storage using AT command.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param inputStruct  Structure that contains needed variables to set storages.
+  * @param outputStruct Structure that contains answer from gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_SetMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout, const SetMsgStrgInputStruct_t inputStruct,OutputStruct_t *outputStruct)
@@ -475,6 +477,8 @@ DRIVERState_t GSM_TestMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout)
   * @brief List messages using at command.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param inputStruct  Structure that contains needed variables to list messages.
+  * @param outputStruct Structure that contains answer from gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout, const ListMsgInputStruct_t inputStruct, ListMsgOutputStruct_t *outputStruct)
@@ -665,6 +669,8 @@ DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout, const List
   * @brief Read message using at command.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param inputStruct  Structure that contains needed variables to read message.
+  * @param outputStruct Structure that contains answer from gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout, const ReadMsgInputStruct_t inputStruct, ReadMsgOutputStruct_t *outputStruct)
@@ -801,9 +807,11 @@ DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout, const Read
   * @brief Delete messages using at command.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param inputStruct  Structure that contains needed variables to delete message(s).
+  * @param outputStruct Structure that contains answer from gsm module.
   * @retval DRIVERState_t status
   */
-DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t deleteType, uint8_t *userRsp, OutputStruct_t *outputStruct)
+DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout, DeleteMsgInputStruct_t inputStruct, OutputStruct_t *outputStruct)
 {
 	/* Buffer for reading message */
 	uint8_t buffer[500] = {0};
@@ -824,9 +832,9 @@ DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t 
 	strcat((char*)msgToSend,"at+cmgd=");
 	uint32_t msgSize = 8;
 
-	if(deleteType == '1')
+	if(inputStruct.deleteType == '1')
 	{
-		strcat((char*)msgToSend,(const char*)userRsp);
+		strcat((char*)msgToSend,(const char*)inputStruct.userRsp);
 		msgSize += size;
 	}
 	else
@@ -836,7 +844,7 @@ DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t 
 		msgSize++;
 		msgToSend[msgSize] = ',';
 		msgSize++;
-		strcat((char*)msgToSend,(const char*)userRsp);
+		strcat((char*)msgToSend,(const char*)inputStruct.userRsp);
 		msgSize += 2;
 	}
 
@@ -870,6 +878,8 @@ DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t 
   * @brief Send message using at command.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param inputStruct  Structure that contains needed variables to send or store message.
+  * @param outputStruct Structure that contains answer from gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout,const SendOrStoreInputStruct_t inputStruct,OutputStruct_t *outputStruct)
@@ -1545,6 +1555,8 @@ DRIVERState_t GSM_DetachFromGPRSService(gsmHandler_t *gsmHandler)
   * @brief Set Packet Data Protocol context for gsm module.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
+  * @param inputStruct  Structure that contains needed variables to set PDP context.
+  * @param outputStruct Structure that contains answer from gsm module.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_SetPDPContext(gsmHandler_t *gsmHandler, uint32_t timeout, SetPDPInputStruct_t inputStruct)
@@ -1807,7 +1819,7 @@ DRIVERState_t GSM_ShowPDPIP(gsmHandler_t *gsmHandler)
   * @brief Active Packet Data Protocol context for gsm module.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
-  * @param PDP 			Index of Packet Data Protocol in format where PDP variable need to be ended with char '\r'!
+  * @param PDP 			Index of Packet Data Protocol format that will be activated
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_ActivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout, const uint8_t *PDP)
@@ -1939,6 +1951,7 @@ DRIVERState_t GSM_DeactiveGPRSPDPContext(gsmHandler_t *gsmHandler)
 /**
   * @brief Deactive Packet Data Protocol context for gsm module.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
+  * @param PDP 			Index of Packet Data Protocol format that will be deactivated
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout, const uint8_t *PDP)
@@ -2140,9 +2153,9 @@ DRIVERState_t GSM_SetSendingIPFormat(gsmHandler_t *gsmHandler, uint32_t timeout,
   * @brief Connect gsm module to specified server.
   * @param gsmHandler   GSM handle that contains everything about gsm module.
   * @param timeout      Timeout period for console.
-  * @param connectType  type of connection(it can be TCP-'1' or UDP-'2').
-  * @param ipAddr       IP address of server.
-  * @param port      	Port number of server.
+  * @param inputStruct  Structure that contains needed variables to set PDP context:
+  * connectType- type of connection(it can be TCP-'1' or UDP-'2'),
+  * ipAddr - IP address of server, port - Port number of server.
   * @retval DRIVERState_t status
   */
 DRIVERState_t GSM_ConnectToServer(gsmHandler_t *gsmHandler, uint32_t timeout,ConnectSrvrInputStruct_t inputStruct)

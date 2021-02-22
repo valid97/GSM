@@ -23,7 +23,7 @@
     (#) Declare a DRIVERGsmHandler_t handle structure (eg. DRIVERGsmHandler_t gsm).
     (#) Initialize the gsm low level resources by implementing the DRIVER_GSM_Init()
     (#) Read characters from gsm using DRIVER_GSM_Read() function
-    (#) Put message to console using DRIVER_GSM_Write() function
+    (#) Put message to gsm using DRIVER_GSM_Write() function
     (#) Flush gsm and bring him to initial state with DRIVER_GSM_Flush() function
     (#) Collect characters from gsm in interrupt routine uart module with
     	IRQ_UART_RX_GSM() function

@@ -195,6 +195,17 @@ typedef struct
 }ReadMsgOutputStruct_t;
 
 /**
+  * @brief  GSM DELETE MESSAGE INPUT Structure definition
+  */
+typedef struct
+{
+	 uint8_t deleteType;		/*!< Delete certain message or all messages */
+
+	 uint8_t *userRsp;			/*!< Index of message to delete 			*/
+
+}DeleteMsgInputStruct_t;
+
+/**
   * @brief  GSM SEND OR STORE MESSAGE INPUT Structure definition
   */
 typedef struct
@@ -269,7 +280,7 @@ DRIVERState_t GSM_SetMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout,const
 DRIVERState_t GSM_TestMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout);
 DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout, const ListMsgInputStruct_t inputStruct, ListMsgOutputStruct_t *outputStruct);
 DRIVERState_t GSM_ReadMsg(gsmHandler_t *gsmHandler, uint32_t timeout,const ReadMsgInputStruct_t inputStruct, ReadMsgOutputStruct_t *outputStruct);
-DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout, uint8_t deleteType,uint8_t *userRsp, OutputStruct_t *outputStruct);
+DRIVERState_t GSM_DeleteMsg(gsmHandler_t *gsmHandler, uint32_t timeout, DeleteMsgInputStruct_t inputStruct, OutputStruct_t *outputStruct);
 DRIVERState_t GSM_SendStoreMsg(gsmHandler_t *gsmHandler, uint32_t timeout,const SendOrStoreInputStruct_t inputStruct,OutputStruct_t *outputStruct);
 
 /* Network operation functions ***************************************************************************************/

@@ -1272,6 +1272,9 @@ void DemoTask(void* pvParameters){
 		  		/* Structure to return gsm response */
 		  		OutputStruct_t outputStruct;
 
+		  		/* Input structure for delete message function */
+		  		DeleteMsgInputStruct_t inputStruct;
+
 		  		/* Request to user */
 		  		DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Enter which type of messagees would you like to delete: \r\n ");
 		  		DRIVER_CONSOLE_Put(&console,(const uint8_t*)"1 Certain message \r\n 2 All messages of a particular type \r\n ");
@@ -1460,10 +1463,16 @@ void DemoTask(void* pvParameters){
 				/* Exit this function and wait for another command */
 				if(breakFlag == 0)
 				{
+					/* initialize output structure */
 					memset(buffer,0,sizeof(buffer));
 					size = 0;
 					outputStruct.gsmRsp = buffer;
-					GSM_DeleteMsg(&gsmHandler, timeout,deleteType,buffer,&outputStruct);
+
+					/* Set input structure */
+					inputStruct.deleteType = deleteType;
+					inputStruct.userRsp = buffer;
+
+					GSM_DeleteMsg(&gsmHandler, timeout,inputStruct,&outputStruct);
 				}
 		  }
 		  else if(strstr((const char*)bufferConsole,(const char*)"send message\r") != NULL ||

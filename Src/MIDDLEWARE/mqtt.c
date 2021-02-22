@@ -7,9 +7,11 @@
   *          functionalities of the console.
   *           + Initialization function
   *           + Connect to broker function
+  *           + Disconnect from broker function
   *           + Publish message to topic on broker function
   *           + Subscribe to topic on broker function
   *           + Function that set hexadecimal format of sending TCPIP packet(needed in mqtt protocol)
+  *           + Ping server function
   *           + Additional function for number base convertion
   *
   @verbatim
@@ -22,9 +24,12 @@
     (#) Declare a MQTTHandler_t handle structure (eg. MQTTHandler_t mqtt).
     (#) Initialize the mqtt low level resources by implementing the MQTT_Init()
     (#) Connect to broker with MQTT_Connect() function
+    (#) Disconnect from broker with MQTT_Disconnect() function
     (#) Set hexadecimal format of sending packets to broker with MQTT_SetHexFormat() function
     (#) Publish message to topic on connected broker with MQTT_Publish() function
     (#) Subscribe to the specified topic on broker with  MQTT_Subscribe() function
+    (#) Ping server with PINGREQ Packet. The Server MUST send a PINGRESP Packet in response
+     to a PINGREQ Packet. This is implemented using MQTT_PingReq() function.
 
   @endverbatim
   *
