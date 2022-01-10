@@ -1,6 +1,7 @@
 				freeRTOS GSM project documentation
 Project structure:
 -GSM project contains some standard functions that implement HAL drivers for used microcontroller and freeRTOS folder that implement freeRTOS environment. It contains drivers for direct communication between console and gsm module, middleware layar that implement functionality of gsm project and application folder that implement mqtt client mode. In this diagram we can see whole structure of GSM project:
+```bash
 .
 ├── freeRTOS_GSM
    ├── Drivers
@@ -26,6 +27,7 @@ Project structure:
    ├── startup
    ├── Debug
    └── README.md
+   ```bash
    
 freeRTOS implementation:
 -GSM project contains 6 tasks. Two tasks are for console (receiving characters from console task and transmitting characters to console task), another 2 tasks are for gsm (receiving response from gsm module and transmitting message to gs module). One task is main task that has the lowest priority and he calls all other functions in project. Also this task blocks when we have to work with console or gsm. The last task is application task to implement mqtt client. When we switch to client mode we can only listen buffer for receiving response from gsm and wait asynchronous message from broker to be sent.
