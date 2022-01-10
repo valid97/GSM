@@ -30,7 +30,7 @@ Project structure:
    ```
    
 freeRTOS implementation:
--GSM project contains 6 tasks. Two tasks are for console (receiving characters from console task and transmitting characters to console task), another 2 tasks are for gsm (receiving response from gsm module and transmitting message to gs module). One task is main task that has the lowest priority and he calls all other functions in project. Also this task blocks when we have to work with console or gsm. The last task is application task to implement mqtt client. When we switch to client mode we can only listen buffer for receiving response from gsm and wait asynchronous message from broker to be sent.
+-GSM project contains 6 tasks. Two tasks are for console (receiving characters from console task and transmitting characters to console task), another 2 tasks are for gsm (receiving response from gsm module and transmitting message to gsm module). One task is main task that has the lowest priority and he calls all other functions in project. Also this task blocks when we have to work with console or gsm. The last task is application task to implement mqtt client. When we switch to client mode we can only listen buffer for receiving response from gsm and wait asynchronous message from broker to be sent.
 
 					DRIVER layer
 Console implementation:
