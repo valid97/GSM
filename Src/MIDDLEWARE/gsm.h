@@ -21,6 +21,9 @@
 #define MAX_SOCKET_NUMBER 16
 #define PORT_NON 65535
 #define CONTEXT_NON 255
+
+#define LENGTH_ALL_MSG 10000
+
 /**
   * @brief  GSM ECHO Status structures definition
   */

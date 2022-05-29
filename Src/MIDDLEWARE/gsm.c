@@ -484,7 +484,7 @@ DRIVERState_t GSM_TestMsgStorage(gsmHandler_t *gsmHandler, uint32_t timeout)
 DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout, const ListMsgInputStruct_t inputStruct, ListMsgOutputStruct_t *outputStruct)
 {
 	/* Buffer for reading message */
-	uint8_t buffer[1000] = {0};
+	uint8_t buffer[LENGTH_ALL_MSG] = {0};
 
 	/* How many characters were received */
 	uint32_t size = 0;
@@ -562,7 +562,7 @@ DRIVERState_t GSM_ListMsg(gsmHandler_t *gsmHandler, uint32_t timeout, const List
 		{
 			startofMsg = startCMGL - buffer;
 			endofMsg = startOK - buffer;
-			uint8_t msgtoDisplay[1000] = {0};
+			uint8_t msgtoDisplay[LENGTH_ALL_MSG] = {0};
 			uint32_t i = 0;
 			for(i = startofMsg; i < endofMsg; i++)
 			{
@@ -1990,7 +1990,7 @@ DRIVERState_t GSM_DeactivePDPContext(gsmHandler_t *gsmHandler, uint32_t timeout,
 	}
 	else
 	{
-		activePDP[12] = buffer[1];
+		activePDP[12] = PDP[1];
 		activePDP[13] = '\r';
 		msgSize = 14;
 		socketInit.PDPcontextNo = 10 + (PDP[1] - '0');

@@ -215,20 +215,20 @@ int main(void)
 void DemoTask(void* pvParameters){
 
 	  /* Write main menu when we turn on/reset microcontroller  */
-	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Aviable commands:\r\n");
+	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n available commands:\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"set echo - set echo on or off!\r\n");
-	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"set message format - it necessery to set format before sending messages!\r\n");
-	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"test storage - see which storages are aviable!\r\n");
-	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"Set storage - it necessery to set storage to be able to receive, send or delete messages!\r\n");
+	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"set message format - it's necessary to set format before sending messages!\r\n");
+	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"test storage - see which storages are available!\r\n");
+	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"Set storage - it's necessary to set storage to be able to receive, send or delete messages!\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"list messages - list al types of messages currently in storages!\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"read message - read message using index of message parameter!\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"delete message - delete message using index of message parameter or delete all messages of specific type!\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"send message - send message from storage or directly!\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"store message - store message in storage!\r\n");
-	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Commands to directly comunicate with gsm modul:\r\n");
+	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Commands to directly communicate with gsm modul:\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"read - read buffer for receving characters from gsm\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"flush - set buffer for receiving characters from gsm to initial state\r\n");
-	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"send cmd - send command directly to gsm modul \r\n");
+	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"*it's possible to directly send at commands to gsm module - just type the command in console and run command \"read\" after \r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Commands for network and TCPIP connection:\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"turn on mobile network - network registration to mobile station\r\n");
 	  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"turn off mobile network - network deregistration(mobile cannot make calls,send messages and use network)\r\n");
@@ -3017,20 +3017,20 @@ void DemoTask(void* pvParameters){
 		  else if(strstr((const char*)bufferConsole,(const char*)"main menu\r") != NULL ||
 				  strstr((const char*)bufferConsole,(const char*)"help\r") != NULL)
 		  {
-		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Aviable commands:\r\n");
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n available commands:\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"set echo - set echo on or off!\r\n");
-		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"set message format - it necessery to set format before sending messages!\r\n");
-		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"test storage - see which storages are aviable!\r\n");
-		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"Set storage - it necessery to set storage to be able to receive, send or delete messages!\r\n");
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"set message format - it's necessary to set format before sending messages!\r\n");
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"test storage - see which storages are available!\r\n");
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"Set storage - it's necessary to set storage to be able to receive, send or delete messages!\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"list messages - list al types of messages currently in storages!\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"read message - read message using index of message parameter!\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"delete message - delete message using index of message parameter or delete all messages of specific type!\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"send message - send message from storage or directly!\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"store message - store message in storage!\r\n");
-		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Commands to directly comunicate with gsm modul:\r\n");
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Commands to directly communicate with gsm modul:\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"read - read buffer for receving characters from gsm\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"flush - set buffer for receiving characters from gsm to initial state\r\n");
-		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"send cmd - send command directly to gsm modul \r\n");
+		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"*it's possible to directly send at commands to gsm module - just type the command in console  and run command \"read\" after \r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"\r\n Commands for network and TCPIP connection:\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"turn on mobile network - network registration to mobile station\r\n");
 		  		  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"turn off mobile network - network deregistration(mobile cannot make calls,send messages and use network)\r\n");
@@ -3102,7 +3102,7 @@ void DemoTask(void* pvParameters){
 		  }
 		  else
 		  {
-			  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"Mistake in writing command. Please, write command correctly!\r\n");
+			  DRIVER_CONSOLE_Put(&console,(const uint8_t*)"Mistake in writing command. Please, write command correctly or type \"help\" for support!\r\n");
 		  }
 
 

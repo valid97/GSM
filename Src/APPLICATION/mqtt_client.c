@@ -77,8 +77,9 @@ MQTTClientType_t MQTT_CLIENT_Init(MQTTClientHandler_t *handler, MQTTClientConfig
 }
 
 /**
-  * @brief Publish message to a specific topic in broker.
-  * @param handler	   	Handle that contains everything about mqtt client(which gsm will be used and console and mqtt file).
+  * @brief Changing state of mqtt client.
+  * @param handler	Handle that contains everything about mqtt client(which gsm will be used and console and mqtt file).
+  * @param state	State type of mqtt client(can be parameter of @MQTTClientState_t)
   * @retval MQTTClientType_t status
   */
 MQTTClientType_t MQTT_CLIENT_SetState(MQTTClientHandler_t *handler, MQTTClientState_t state)
@@ -113,7 +114,7 @@ void WaitMessageTask(void* pvParameters)
 		switch(msg.state){
 		case MQTT_CLIENT_LISTEN:
 			blockPeriod = MQTT_CLIENT_NO_BLOCK;
-			/* Read what is in buffer */
+			/* Read what is it in buffer */
 			DRIVER_GSM_Read(handler->gsm,buffer, &size);
 			/* If topic name occurs in buffer, we have to set size of message that is sent from broker */
 			if(strstr((char*)buffer,(const char*)handler->mqtt->mqttPacket.payload.topicName) != NULL)
