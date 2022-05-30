@@ -155,7 +155,7 @@ DRIVERState_t GSM_Init(gsmHandler_t *handler, gsmConfig_t *config)
 
 	handler->console 	= config->console;
 
-	handler->mqtt 		= config->mqtt;
+//	handler->mqtt 		= config->mqtt;
 
 	handler->activeSocketNo = 0;
 

@@ -16,7 +16,7 @@
 #include <driver_gsm.h>
 #include <stdlib.h>
 #include <time.h>
-#include <mqtt.h>
+//#include <mqtt.h>
 
 #define MAX_SOCKET_NUMBER 16
 #define PORT_NON 65535
@@ -114,7 +114,7 @@ typedef struct __gsmHandler_t
 
 	DRIVERConsoleHandler_t *console;			/*!< Console handler 								*/
 
-	MQTTHandler_t *mqtt;						/*!< Mqtt handler 									*/
+//	MQTTHandler_t *mqtt;						/*!< Mqtt handler 									*/
 
 	Socket_t socket[MAX_SOCKET_NUMBER + 1];		/*!< Socket structure(zero socket is not in use)	*/
 
@@ -135,7 +135,7 @@ typedef struct __gsmConfig_t
 
 	DRIVERConsoleHandler_t *console;			/*!< Console handler 								*/
 
-	MQTTHandler_t *mqtt;						/*!< Mqtt handler 									*/
+//	MQTTHandler_t *mqtt;						/*!< Mqtt handler 									*/
 
 }gsmConfig_t;
 
@@ -318,5 +318,6 @@ DRIVERState_t GSM_SendToServer(gsmHandler_t *gsmHandler, uint32_t timeout, uint8
 DRIVERState_t EstablishTCPClientConnection(gsmHandler_t *gsmHandler, uint32_t timeout);
 
 DRIVERState_t onlyPutNumber(DRIVERConsoleHandler_t *console, uint8_t *buffer, uint32_t *size, uint32_t bufSize, uint32_t timeout);
+
 
 #endif /* MIDDLEWARE_GSM_H_ */

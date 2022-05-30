@@ -141,7 +141,7 @@ int main(void)
   /* Initialize handler for middleware layer */
   gsmCofig.gsm 				= &gsm;
   gsmCofig.console 			= &console;
-  gsmCofig.mqtt	 			= &mqtt;
+//  gsmCofig.mqtt	 			= &mqtt;
 
   /* Set mqtt protocol config handle */
   mqttConfig.gsmHandler 	= &gsm;
@@ -1029,7 +1029,7 @@ void DemoTask(void* pvParameters){
 								break;
 							}
 
-							MQTT_Publish(gsmHandler.mqtt,timeout,topic,msgtoSend);
+							MQTT_Publish(&mqtt,timeout,topic,msgtoSend);
 						}
 					}
 				}
@@ -1251,7 +1251,7 @@ void DemoTask(void* pvParameters){
 								break;
 							}
 
-							MQTT_Publish(gsmHandler.mqtt,timeout,topic,msgtoSend);
+							MQTT_Publish(&mqtt,timeout,topic,msgtoSend);
 						}
 					}
 				}
